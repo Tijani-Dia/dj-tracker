@@ -1,0 +1,10 @@
+exclude *
+recursive-exclude * *
+
+include LICENSE
+include MANIFEST.in
+include README.md
+include setup.cfg
+include setup.py
+
+recursive-include src/dj_tracker *.html *.py

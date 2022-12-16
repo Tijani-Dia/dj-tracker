@@ -1,0 +1,102 @@
+{% extends "dj_tracker/base.html" %}
+{% block title %}Queryset tracking #{{ object.pk }}{% endblock %}
+{% block body %}
+    <h1 class="my-4 d-flex align-items-baseline">
+        Queryset tracking #{{ object.pk }}
+        <small class="text-muted fs-6 ms-3">{{ object.num_instances }} instances tracked.</small>
+    </h1>
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <button class="btn btn-dark"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#tb-{{ object.pk }}"
+                        aria-expanded="false">
+                    Traceback
+                </button>
+                <button class="btn btn-dark"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#sql-{{ object.pk }}"
+                        aria-expanded="false">
+                    SQL
+                </button>
+            </div>
+            <div class="collapse" id="sql-{{ object.pk }}">
+                <p class="card-text font-monospace">{{ object.sql }}</p>
+            </div>
+            <div class="collapse" id="tb-{{ object.pk }}">
+                <button class="btn btn-secondary"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#stack-top"
+                        aria-expanded="false">
+                    Toggle top
+                </button>
+                <div class="collapse" id="stack-top">
+                    {% for entry in object.traceback.entries.top %}
+                        <p>{{ entry.func }}</p>
+                        <p class="card-text font-monospace">{{ entry.filename }}:{{ entry.lineno }}</p>
+                    {% endfor %}
+                </div>
+                <div class="stack-middle">
+                    {% for entry in object.traceback.entries.middle %}
+                        <p>{{ entry.func }}</p>
+                        <p class="card-text font-monospace">{{ entry.filename }}:{{ entry.lineno }}</p>
+                    {% endfor %}
+                </div>
+                <button class="btn btn-secondary"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#stack-bottom"
+                        aria-expanded="false">
+                    Toggle bottom
+                </button>
+                <div class="collapse" id="stack-bottom">
+                    {% for entry in object.traceback.entries.bottom %}
+                        <p>{{ entry.func }}</p>
+                        <p class="card-text font-monospace">{{ entry.filename }}:{{ entry.lineno }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row my-4">
+        <h4 class="h4">Hints</h4>
+        <ul class="list-group list-group-flush">
+            {% for hint in object.get_hints %}
+                <li class="list-group-item">{{ hint }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% for instance_tracking in object.instance_trackings.all %}
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-baseline">
+                    <h4 class="card-title">{{ instance_tracking.select_related_field }}</h4>
+                </div>
+                <table class="table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Field</th>
+                        <th scope="col">Get</th>
+                        <th scope="col">Set</th>
+                        <th scope="col">Occurrences</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                        {% for obj in instance_tracking.related_field_trackings.all %}
+                            <tr>
+                                <th scope="row">{{ obj.field_tracking.field.name }}</th>
+                                <td>{{ obj.field_tracking.get_count }}</td>
+                                <td>{{ obj.field_tracking.set_count }}</td>
+                                <td>{{ obj.num_occurrences }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endfor %}
+{% endblock %}

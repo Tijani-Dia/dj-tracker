@@ -1,0 +1,92 @@
+{% load dj_tracker %}
+
+<div class="card m-2" id="{{ query_pk }}" {%  if qs_tracking.duplicate %} data-duplicate="true" {% endif %} {%  if qs_tracking.related %} data-related="true" {% endif %}>
+    <div class="card-body">
+        <h5 class="card-title">
+            <a href="{{ query.get_absolute_url }}">{{ query_pk }}</a>
+            {% if qs_tracking.related %}
+                <small>{{ qs_tracking.related|length }} related queries</small>
+            {% endif %}
+        </h5>
+        <dl class="row">
+            <dt class="col-4">Model</dt>
+            <dd class="col-8">{{ query.model }}</dd>
+            <dt class="col-4">Num instances</dt>
+            <dd class="col-8">{{ query.num_instances }}</dd>
+            <dt class="col-4">Query type</dt>
+            <dd class="col-8">{{ query.query_type }}</dd>
+            <dt class="col-4">Average duration</dt>
+            <dd class="col-8">{{ qs_tracking.average_duration|duration_in_ms }} ms</dd>
+            {% if qs_tracking.duplicate %}
+                <dt class="col-4">Repeated</dt>
+                <dd class="col-8">{{ qs_tracking.num_occurrences }} time(s)</dd>
+            {% endif %}
+            <dt class="col-4">Cache hits</dt>
+            <dd class="col-8">
+                {{ query.cache_hits }}
+                {% if query.cache_hits %}
+                    <ul class="list list-unstyled">
+                        <li class="list-item">.__len__: {{ query.len_calls }}</li>
+                        <li class="list-item">.__bool__: {{ query.exists_calls }}</li>
+                        <li class="list-item">.__contains__: {{ query.contains_calls }}</li>
+                    </ul>
+                {% endif %}
+            </dd>
+            {% if query.field %}
+                <dt class="col-4">Field</dt>
+                <dd class="col-8">{{ query.field }}</dd>
+            {% endif %}
+            {% if query.iterable_class %}
+                {% if query.iterable_class == "ModelIterable" %}
+                    {% if query.num_instances %}
+                        <dt class="col-4">Model attributes accessed</dt>
+                        <dd class="col-8">
+                            <button class="btn btn-primary"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#attrs{{ query_pk }}"
+                                    aria-expanded="false">
+                                Show
+                            </button>
+                            <div class="collapse" id="attrs{{ query_pk }}">
+                                <ul class="list list-unstyled">
+                                    {% for attr, count in query.attributes_accessed.items %}
+                                        <li class="list-item">{{ attr }} - {{ count }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </dd>
+                    {% endif %}
+                {% else %}
+                    <dt class="col-4">Iterable class</dt>
+                    <dd class="col-8">{{ query.iterable_class }}</dd>
+                {% endif %}
+            {% endif %}
+        </dl>
+        {% if qs_tracking.related %}
+            <div class="accordion" id="query-{{ query_pk }}">
+                {% for field, related_trackings in qs_tracking.related.items %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{% if field %}{{ field.name }}{% else %}{{field}}{%endif%}{{ query_pk }}" aria-controls="{% if field %}{{ field.name }}{% else %}{{field}}{%endif%}{{ query_pk }}">
+                                {{ field }}
+                                {% with num_queries=related_trackings|length %}
+                                    <small class="text-muted fs-6 ms-3">
+                                        {{ num_queries }} quer{{ num_queries|pluralize:"y,ies" }}
+                                    </small>
+                                {% endwith %}
+                            </button>
+                        </h2>
+                        <div id="{% if field %}{{ field.name }}{% else %}{{field}}{%endif%}{{ query_pk }}" class="accordion-collapse collapse" data-bs-parent="#query-{{ query_pk }}">
+                            <div class="accordion-body">
+                                {% for related_qs in related_trackings %}
+                                    {% include "dj_tracker/qs_tracking.html" with qs_tracking=related_qs query=related_qs.query query_pk=related_qs.query.pk %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>

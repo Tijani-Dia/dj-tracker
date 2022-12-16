@@ -1,0 +1,12 @@
+site_name: Django tracker
+repo_url: https://github.com/tijani-dia/django-tracker
+theme:
+    name: material
+    palette:
+        primary: blue grey
+
+nav:
+    - Home: index.md
+    - Installation: installation.md
+    - Configuration: configuration.md
+    - Usage: usage.md

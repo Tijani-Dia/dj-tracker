@@ -1,0 +1,16 @@
+{% extends "dj_tracker/base.html" %}
+{% block title %}Tracking #{{ object.pk }}{% endblock %}
+{% block body %}
+    <h1 class="my-4 d-flex align-items-baseline">
+        #{{ object.pk }}
+        <small class="text-muted fs-6 ms-3">
+            {{ object.started_at|date:"D d M Y" }} {{ object.started_at|time:"H:i" }} -
+            {{ object.num_queries }} queries recorded.
+        </small>
+    </h1>
+    <div class="d-flex fs-5 my-4 flex-row flex-wrap">
+        {% for query_id, data in queries %}
+            {% include "dj_tracker/qs_tracking.html" with query=data.query durations=data.durations related=data.related query_id=query_id num_related=data.num_related %}
+        {% endfor %}
+    </div>
+{% endblock %}

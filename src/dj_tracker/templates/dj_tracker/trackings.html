@@ -1,0 +1,51 @@
+{% extends "dj_tracker/base.html" %}
+{% block title %}Requests{% endblock %}
+{% block body %}
+    <h1 class="display-2">Requests</h1>
+    <div class="row justify-content-between">
+        <div class="col-7">
+            <div class="list-group list-group-flush fs-5 my-4">
+                {% for url_path in page_obj %}
+                    <a href="{{ url_path.get_absolute_url }}"
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div class="me-auto my-2">{{ url_path }}</div>
+                        <span class="badge bg-primary rounded-pill">{{ url_path.num_trackings }}</span>
+                    </a>
+                {% empty %}
+                    <p>No trackings yet.</p>
+                {% endfor %}
+            </div>
+            <nav class="py-4">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                        </li>
+                    {% endif %}
+                    <li class="page-item active">
+                        <a class="page-link" href="#">{{ page_obj.number }}</a>
+                    </li>
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+{% endblock %}

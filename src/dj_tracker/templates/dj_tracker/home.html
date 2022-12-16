@@ -1,0 +1,126 @@
+{% extends "dj_tracker/base.html" %}
+{% load dj_tracker %}
+
+{% block title %}Trackings{% endblock %}
+
+{% block body %}
+    <h1 class="h1">Trackings</h1>
+    <div class="container mx-0 mt-4 p-0">
+        <div class="row gy-5 pb-4">
+            <div class="col-12">
+                <div class="card">
+                    <h4 class="card-header">Requests</h4>
+                    <div class="card-body p-0">
+                        <div class="row gx-5">
+                            <div class="col">
+                                <h5 class="h5 ms-3 my-3">Latest</h5>
+                                <div class="list-group list-group-flush">
+                                    {% for url_path in latest %}
+                                        <a href="{{ url_path.get_absolute_url }}"
+                                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                            <div class="">{{ url_path }}</div>
+                                        </a>
+                                    {% empty %}
+                                        <p>No trackings yet.</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col">
+                                <h5 class="h5 ms-3 my-3">Most frequent</h5>
+                                <div class="list-group list-group-flush">
+                                    {% for url_path in most_tracked %}
+                                        <a href="{{ url_path.get_absolute_url }}"
+                                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                            <div class="">{{ url_path }}</div>
+                                            <span class="badge bg-primary rounded-pill">{{ url_path.num_trackings }}</span>
+                                        </a>
+                                    {% empty %}
+                                        <p>No trackings yet.</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-center">
+                            <a href="{% url 'views' %}" class="btn btn-primary my-4">See all requests</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card">
+                    <h4 class="card-header">Queries</h4>
+                    <div class="card-body">
+                        <div class="row">
+                            <h5 class="card-title">Most frequent</h5>
+                            <table class="table">
+                                <thead>
+                                  <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Repeated</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                    {% for query in most_repeated_queries %}
+                                        <tr>
+                                            <td><a href="{{ query.get_absolute_url }}">{{ query.pk }}</a></td>
+                                            <td>{{ query.num_trackings }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="row">
+                            <h5 class="card-title">Slowest</h5>
+                            <table class="table">
+                                <thead>
+                                  <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Average duration (in seconds)</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                    {% for query in slowest %}
+                                        <tr>
+                                            <td><a href="{{ query.get_absolute_url }}">{{ query.pk }}</a></td>
+                                            <td>{{ query.average_duration|duration_in_ms }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <a href="#" class="btn btn-primary">Go somewhere</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card">
+                    <h4 class="card-header">Fields</h4>
+                    <div class="card-body">
+                        <h5 class="card-title">Most accessed</h5>
+                        <table class="table">
+                            <thead>
+                              <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Get</th>
+                                <th scope="col">Set</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                                {% for field in most_accessed_fields %}
+                                    <tr>
+                                        <td>{{ field }}</td>
+                                        <td>{{ field.get_count }}</td>
+                                        <td>{{ field.set_count }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <div class="d-flex justify-content-center">
+                            <a href="{% url 'fields' %}" class="btn btn-primary mt-3">More insights</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

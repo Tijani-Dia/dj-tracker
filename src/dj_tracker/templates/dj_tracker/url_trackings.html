@@ -1,0 +1,19 @@
+{% extends "dj_tracker/base.html" %}
+{% block title %} {{ object.path }} {% endblock %}
+{% block body %}
+    <h1 class="my-4">{{ object.path }}</h1>
+    <div class="list-group">
+        {% for query_group in query_groups %}
+            <a href="{{ query_group.get_absolute_url }}"
+               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div class="me-auto my-2">
+                    #{{ query_group.pk }} - {{ query_group.num_queries }} queries
+                    <div class="text-muted fs-6">
+                        {{ query_group.latest_run_at|date:"D d M Y" }} at {{ query_group.latest_run_at|time:"H:i" }}
+                    </div>
+                </div>
+                <span class="badge bg-primary rounded-pill">{{ query_group.num_trackings }}</span>
+            </a>
+        {% endfor %}
+    </div>
+{% endblock %}

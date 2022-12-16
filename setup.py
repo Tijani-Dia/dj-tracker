@@ -15,6 +15,11 @@ test_requires = [
     "flake8",
 ]
 
+docs_requires = [
+    "mkdocs",
+    "mkdocs-material",
+]
+
 build_requires = [
     "twine",
     "check-wheel-contents",
@@ -38,6 +43,7 @@ setup(
     tests_require=test_requires,
     extras_require={
         "test": test_requires,
+        "docs": docs_requires,
         "build": build_requires,
     },
     package_dir={"": "src"},

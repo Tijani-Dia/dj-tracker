@@ -13,7 +13,7 @@ format:
 	flake8 src/dj_tracker tests setup.py manage.py --ignore E501,W503
 
 format-client:
-	npx prettier --write docs mkdocs.yml README.md --tab-width=4
+	npx prettier --write docs *.yml .github README.md --tab-width=4
 
 format-html:
 	djlint --reformat --quiet src/dj_tracker/templates

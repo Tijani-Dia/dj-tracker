@@ -2,10 +2,10 @@
 
 ## Install the package
 
-Install `django-tracker` from PyPi:
+Install `django-trackings` from PyPi:
 
 ```bash
-pip install django-tracker
+pip install django-trackings
 ```
 
 ## Add `dj_tracker` to `INSTALLED_APPS`

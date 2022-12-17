@@ -13,6 +13,7 @@ test_requires = [
     "black",
     "isort",
     "flake8",
+    "factory_boy",
 ]
 
 docs_requires = [
@@ -26,7 +27,7 @@ build_requires = [
 ]
 
 setup(
-    name="django-tracker",
+    name="django-trackings",
     version=__version__,
     description="Track your Django models.",
     long_description=long_description,

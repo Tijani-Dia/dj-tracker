@@ -24,18 +24,23 @@ class Promisable(models.Model):
 
 
 class Promise:
-    __slots__ = ("cache_key", "creation_kwargs")
-
-    # Set of cache keys corresponding to resolved promises/model instances.
-    resolved = None
-    # Mapping of `cache_key: promise` representing the current
-    # set of promises to resolve.
-    to_resolve = None
     # Model to attach to this promise class.
     model_string = None
     # Promise class(es) this one depends on,
     # typically via foreign keys on the model they represent.
     deps = ()
+
+    __slots__ = ("cache_key", "creation_kwargs")
+
+    @classmethod
+    def __init_subclass__(cls):
+        super().__init_subclass__()
+        # Set of cache keys corresponding to resolved promises/model instances.
+        cls.resolved = set()
+
+        # Mapping of `cache_key: promise` representing the current
+        # set of promises to resolve.
+        cls.to_resolve = {}
 
     def __init__(self, cache_key: int, **creation_kwargs):
         """
@@ -147,11 +152,9 @@ class Promise:
 
 
 class ModelPromise(Promise):
-    __slots__ = ()
-
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.Model"
+
+    __slots__ = ()
 
     @staticmethod
     def get_cache_key(*, label: str) -> int:
@@ -159,12 +162,10 @@ class ModelPromise(Promise):
 
 
 class FieldPromise(Promise):
-    __slots__ = ()
-
-    deps = (ModelPromise,)
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.Field"
+    deps = (ModelPromise,)
+
+    __slots__ = ()
 
     @staticmethod
     def get_cache_key(*, model_id: int, name: str) -> int:
@@ -172,11 +173,9 @@ class FieldPromise(Promise):
 
 
 class SQLPromise(Promise):
-    __slots__ = ()
-
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.SQL"
+
+    __slots__ = ()
 
     @staticmethod
     def get_cache_key(*, sql: str) -> int:
@@ -184,11 +183,9 @@ class SQLPromise(Promise):
 
 
 class URLPathPromise(Promise):
-    __slots__ = ()
-
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.URLPath"
+
+    __slots__ = ()
 
     @staticmethod
     def get_cache_key(*, path: str) -> int:
@@ -196,11 +193,9 @@ class URLPathPromise(Promise):
 
 
 class SourceFilePromise(Promise):
-    __slots__ = ()
-
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.SourceFile"
+
+    __slots__ = ()
 
     @staticmethod
     def get_cache_key(*, name: str) -> int:
@@ -208,12 +203,10 @@ class SourceFilePromise(Promise):
 
 
 class SourceCodePromise(Promise):
-    __slots__ = ()
-
-    deps = (SourceFilePromise,)
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.SourceCode"
+    deps = (SourceFilePromise,)
+
+    __slots__ = ()
 
     @staticmethod
     def get_cache_key(*, filename_id: int, func: str, lineno: int) -> int:
@@ -221,14 +214,12 @@ class SourceCodePromise(Promise):
 
 
 class StackPromise(Promise):
-    __slots__ = "entries"
-
-    deps = (SourceCodePromise,)
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.Stack"
+    deps = (SourceCodePromise,)
 
     stack_entries = []
+
+    __slots__ = "entries"
 
     def __init__(self, cache_key: int, *, entries):
         super().__init__(cache_key)
@@ -268,12 +259,10 @@ class StackPromise(Promise):
 
 
 class TracebackPromise(Promise):
-    __slots__ = ()
-
-    deps = (StackPromise,)
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.Traceback"
+    deps = (StackPromise,)
+
+    __slots__ = ()
 
     @staticmethod
     def get_cache_key(*, top_id: int, middle_id: int, bottom_id: int) -> int:
@@ -281,12 +270,10 @@ class TracebackPromise(Promise):
 
 
 class FieldTrackingPromise(Promise):
-    __slots__ = ()
-
-    deps = (FieldPromise,)
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.FieldTracking"
+    deps = (FieldPromise,)
+
+    __slots__ = ()
 
     @staticmethod
     def get_cache_key(*, field_id: int, get_count: int, set_count: int) -> int:
@@ -294,14 +281,12 @@ class FieldTrackingPromise(Promise):
 
 
 class InstanceTrackingPromise(Promise):
-    __slots__ = "field_trackings"
-
-    deps = (FieldTrackingPromise,)
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.InstanceTracking"
+    deps = (FieldTrackingPromise,)
 
     trackings = []
+
+    __slots__ = "field_trackings"
 
     def __init__(self, cache_key: int, *, field_trackings, **kwargs):
         super().__init__(cache_key, **kwargs)
@@ -347,14 +332,12 @@ class InstanceTrackingPromise(Promise):
 
 
 class QueryPromise(Promise):
-    __slots__ = "instance_trackings"
-
-    deps = (TracebackPromise, SQLPromise, ModelPromise, InstanceTrackingPromise)
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.Query"
+    deps = (TracebackPromise, SQLPromise, ModelPromise, InstanceTrackingPromise)
 
     trackings = []
+
+    __slots__ = "instance_trackings"
 
     def __init__(self, cache_key: int, *, instance_trackings, **kwargs):
         super().__init__(cache_key, **kwargs)
@@ -431,15 +414,13 @@ class QueryPromise(Promise):
 
 
 class QueryGroupPromise(Promise):
-    __slots__ = "queries"
-
-    resolved = set()
-    to_resolve = {}
     model_string = "dj_tracker.QueryGroup"
 
     trackings = []
     to_update = set()
     durations = {}
+
+    __slots__ = "queries"
 
     def __init__(self, cache_key: int, *, queries):
         super().__init__(cache_key)

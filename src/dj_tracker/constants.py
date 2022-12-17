@@ -30,7 +30,6 @@ def _set_dj_tracker_settings():
     from django.conf import settings
 
     DJ_TRACKER_SETTINGS = {
-        "COMMANDS": {"runserver"},
         "COLLECTION_INTERVAL": 3,
         "APPS_TO_EXCLUDE": None,
         "IGNORE_MODULES": None,
@@ -81,11 +80,6 @@ def _get_ignored_modules():
         ignored_modules.update(set(extra_ignored_modules))
 
     return ignored_modules
-
-
-def _get_commands():
-    _set_dj_tracker_settings()
-    return DJ_TRACKER_SETTINGS.pop("COMMANDS")
 
 
 def _get_collection_interval():

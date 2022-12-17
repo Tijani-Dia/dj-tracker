@@ -4,18 +4,6 @@
 
 All `dj_tracker` settings must be defined in a dictionary named `DJ_TRACKER` in your project's settings.
 
-### `COMMANDS`
-
-This setting determines the set of commands for which you'd like your queries to be tracked whenever they're run. The logic is encapsulated [here](https://github.com/Tijani-Dia/django-tracker/blob/main/src/dj_tracker/apps.py#L10). Should you have a different setup/need (for example running the tracker for a script), you can just make sure to call `tracker.start()` when your program starts.
-
-```python
-# settings.py
-
-DJ_TRACKER = {
-    "COMMANDS": {"runserver", "test"},
-}
-```
-
 ### `APPS_TO_EXCLUDE`
 
 By default, `dj_tracker` tracks all models in all apps except from `dj_tracker` itself and the `sessions` app.

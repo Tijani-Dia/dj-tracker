@@ -20,6 +20,17 @@ INSTALLED_APPS = [
 ]
 ```
 
+## Add `dj_tracker` middleware
+
+Add `DjTrackerMiddleware` to the `MIDDLEWARE` list in your project's settings:
+
+```python
+MIDDLEWARE = [
+    "dj_tracker.middleware.DjTrackerMiddleware",
+    ...
+]
+```
+
 ## Add `dj_tracker` URLs
 
 Add the following to your `urls.py` file:

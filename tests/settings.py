@@ -17,6 +17,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "dj_tracker.middleware.DjTrackerMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",

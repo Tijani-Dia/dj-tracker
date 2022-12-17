@@ -6,7 +6,7 @@ All `dj_tracker` settings must be defined in a dictionary named `DJ_TRACKER` in 
 
 ### `COMMANDS`
 
-This setting determines the set of commands for which you'd like your queries to be tracked whenever they're run. The logic is encapsulated here. Should you have a different setup/need (for example running the tracker for a script), you can just make sure to call `tracker.start()` when your program starts.
+This setting determines the set of commands for which you'd like your queries to be tracked whenever they're run. The logic is encapsulated [here](https://github.com/Tijani-Dia/django-tracker/blob/main/src/dj_tracker/apps.py#L10). Should you have a different setup/need (for example running the tracker for a script), you can just make sure to call `tracker.start()` when your program starts.
 
 ```python
 # settings.py

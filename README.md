@@ -20,8 +20,8 @@
 
 ## Getting started
 
-Check out the [installation steps]().
+Check out the [installation steps](https://tijani-dia.github.io/django-tracker/installation/).
 
 ## Documentation
 
-All documentation is in the "docs" directory and online at google.com
+All documentation is in the "docs" directory and online at https://tijani-dia.github.io/django-tracker/

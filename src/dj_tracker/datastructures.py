@@ -12,6 +12,7 @@ from django.utils.timezone import now
 
 from dj_tracker.collector import Collector
 from dj_tracker.constants import DUMMY_REQUEST
+from dj_tracker.context import get_request
 from dj_tracker.promise import (
     FieldPromise,
     FieldTrackingPromise,
@@ -19,7 +20,7 @@ from dj_tracker.promise import (
     ModelPromise,
     QueryPromise,
     SQLPromise,
-    get_traceback_and_request,
+    TracebackPromise,
 )
 from dj_tracker.utils import get_sql_from_query
 
@@ -219,10 +220,10 @@ class QuerySetTracker:
         result_cache_collected=False,
         iterable_class="",
     ):
-        self.traceback_id, request = get_traceback_and_request()
+        self.traceback_id = TracebackPromise.get()
         self.model_id = ModelPromise.get_or_create(label=queryset.model._meta.label)
         self.field_id = self.related_queryset_id = None
-        self.request_tracker = get_tracker(request)
+        self.request_tracker = get_tracker(get_request())
         self.query_type = query_type
         self.iterable_class = iterable_class
         self._result_cache_collected = result_cache_collected

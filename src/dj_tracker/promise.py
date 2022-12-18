@@ -1,13 +1,11 @@
 from collections import Counter
 from itertools import takewhile
 from sys import _getframe
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple
 
 from django.apps import apps
 from django.db import models
-from django.http import HttpRequest
 
-from dj_tracker.constants import DUMMY_REQUEST
 from dj_tracker.utils import cached_attribute, delay, hash_string, ignore_frame
 
 
@@ -268,6 +266,61 @@ class TracebackPromise(Promise):
     def get_cache_key(*, top_id: int, middle_id: int, bottom_id: int) -> int:
         return hash((top_id, middle_id, bottom_id))
 
+    @classmethod
+    def get(cls, ignore_frames: int = 3) -> int:
+        """
+        Returns the current traceback id.
+        """
+        stack = []
+        frame = _getframe(ignore_frames)
+        get_source_code_id = SourceCodePromise.get_or_create
+        get_source_file_id = SourceFilePromise.get_or_create
+
+        try:
+            while frame:
+                code = frame.f_code
+                filename = code.co_filename
+                stack.append(
+                    (
+                        get_source_code_id(
+                            func=code.co_name,
+                            lineno=frame.f_lineno,
+                            filename_id=get_source_file_id(name=filename),
+                        ),
+                        ignore_frame(filename),
+                    )
+                )
+                frame = frame.f_back
+        finally:
+            del frame
+
+        def ignore_entry(entry):
+            return entry[1]
+
+        top_entries = tuple(
+            (i, entry[0]) for i, entry in enumerate(takewhile(ignore_entry, stack))
+        )
+        top_index = len(top_entries)
+        bottom_entries = tuple(
+            entry[0] for entry in takewhile(ignore_entry, reversed(stack[top_index:]))
+        )
+        bottom_entries = tuple(
+            (i, entry) for i, entry in enumerate(reversed(bottom_entries))
+        )
+        middle_entries = tuple(
+            (i, entry[0])
+            for i, entry in enumerate(
+                stack[top_index : len(stack) - len(bottom_entries)]
+            )
+        )
+
+        get_stack_id = StackPromise.get_or_create
+        return cls.get_or_create(
+            top_id=get_stack_id(entries=top_entries),
+            middle_id=get_stack_id(entries=middle_entries),
+            bottom_id=get_stack_id(entries=bottom_entries),
+        )
+
 
 class FieldTrackingPromise(Promise):
     model_string = "dj_tracker.FieldTracking"
@@ -503,72 +556,3 @@ class QueryGroupPromise(Promise):
 
         QuerySetTracking.objects.bulk_update(objs, fields=["average_duration"])
         to_update.clear()
-
-
-def get_traceback_and_request(
-    ignore_frames: int = 3,
-) -> Tuple[int, Union[HttpRequest, DUMMY_REQUEST]]:
-    """
-    Retrieves the current traceback id along with a request object
-    if found in a frame's locals.
-    """
-    stack = []
-    request = None
-    request_found = False
-    frame = _getframe(ignore_frames)
-    get_source_code_id = SourceCodePromise.get_or_create
-    get_source_file_id = SourceFilePromise.get_or_create
-
-    try:
-        while frame:
-            code = frame.f_code
-            filename = code.co_filename
-            stack.append(
-                (
-                    get_source_code_id(
-                        func=code.co_name,
-                        lineno=frame.f_lineno,
-                        filename_id=get_source_file_id(name=filename),
-                    ),
-                    ignore_frame(filename),
-                )
-            )
-
-            if (
-                not request_found
-                and (request := frame.f_locals.get("request"))
-                and isinstance(request, HttpRequest)
-            ):
-                request_found = True
-
-            frame = frame.f_back
-    finally:
-        del frame
-
-    def ignore_entry(entry):
-        return entry[1]
-
-    top_entries = tuple(
-        (i, entry[0]) for i, entry in enumerate(takewhile(ignore_entry, stack))
-    )
-    top_index = len(top_entries)
-    bottom_entries = tuple(
-        entry[0] for entry in takewhile(ignore_entry, reversed(stack[top_index:]))
-    )
-    bottom_entries = tuple(
-        (i, entry) for i, entry in enumerate(reversed(bottom_entries))
-    )
-    middle_entries = tuple(
-        (i, entry[0])
-        for i, entry in enumerate(stack[top_index : len(stack) - len(bottom_entries)])
-    )
-
-    get_stack_id = StackPromise.get_or_create
-    return (
-        TracebackPromise.get_or_create(
-            top_id=get_stack_id(entries=top_entries),
-            middle_id=get_stack_id(entries=middle_entries),
-            bottom_id=get_stack_id(entries=bottom_entries),
-        ),
-        request if request else DUMMY_REQUEST,
-    )

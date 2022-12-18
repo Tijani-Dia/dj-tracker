@@ -1,3 +1,4 @@
+import atexit
 import threading
 from functools import wraps
 from time import perf_counter_ns
@@ -216,11 +217,12 @@ def start():
                     Descriptor = DESCRIPTORS_MAP[klass]
                     setattr(model, attname, Descriptor(attr, attname))
 
-        _worker_thread = threading.Thread(target=Collector.run, daemon=False)
+        _worker_thread = threading.Thread(target=Collector.run, daemon=True)
         _worker_thread.start()
         _started = True
 
 
+@atexit.register
 def stop():
     global _worker_thread
     if _worker_thread:

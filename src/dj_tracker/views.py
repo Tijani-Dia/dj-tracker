@@ -97,6 +97,8 @@ class QueryGroupView(DetailView):
                 pks.append(str(query.pk))
                 continue
 
+            # May raise KeyError.
+            # Can happen when the related queryset comes from another request.
             parent = trackings[parent_pk]
             if not (related := getattr(parent, "related", None)):
                 related = parent.related = {}

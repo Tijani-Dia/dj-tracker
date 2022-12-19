@@ -41,3 +41,19 @@ class Book(models.Model):
 
     def get_title_and_summary(self):
         return f"{self.title}-{self.summary}"
+
+
+class Place(models.Model):
+    name = models.CharField(max_length=50)
+    address = models.CharField(max_length=80)
+
+
+class Pizzeria(models.Model):
+    serves_pizza = models.BooleanField(default=True)
+
+    class Meta:
+        abstract = True
+
+
+class TastyRestaurant(Pizzeria, Place):
+    serves_hot_dogs = models.BooleanField(default=False)

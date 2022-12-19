@@ -1,7 +1,7 @@
 import factory
 from django.contrib.auth import get_user_model
 
-from tests.models import Author, Book, Category, Comment
+from tests.models import Author, Book, Category, Comment, Place, TastyRestaurant
 
 
 class CategoryFactory(factory.django.DjangoModelFactory):
@@ -52,3 +52,16 @@ class BookFactory(factory.django.DjangoModelFactory):
             # A list of authors were passed in, use them
             for author in extracted:
                 self.authors.add(author)
+
+
+class PlaceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Place
+
+    name = factory.Sequence(lambda n: f"place-{n}")
+    address = factory.Faker("address")
+
+
+class TastyRestaurantFactory(PlaceFactory):
+    class Meta:
+        model = TastyRestaurant

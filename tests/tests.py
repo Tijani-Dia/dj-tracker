@@ -1,6 +1,7 @@
 import random
 import unittest
 
+from django import VERSION as DJANGO_VERSION
 from django.test import TestCase
 
 from dj_tracker import tracker
@@ -16,9 +17,10 @@ from tests.factories import (
     BookFactory,
     CategoryFactory,
     CommentFactory,
+    TastyRestaurantFactory,
     UserFactory,
 )
-from tests.models import Author, Book, Category, Comment, User
+from tests.models import Author, Book, Category, Comment, TastyRestaurant, User
 
 
 class DjTrackerTestCase(TestCase):
@@ -563,3 +565,15 @@ class TestAttributesAccessed(DjTrackerTestCase):
         self.assertEqual(attrs_accessed["get_title_and_summary"], len_qs)
         self.assertEqual(attrs_accessed["title"], 3 * len_qs)
         self.assertEqual(attrs_accessed["summary"], 2 * len_qs)
+
+
+class TestInheritance(DjTrackerTestCase):
+    def test_inheritance(self):
+        TastyRestaurantFactory()
+        resto = TastyRestaurant.objects.get()
+        self.assertTrue(resto.serves_pizza)
+        self.assertEqual(resto._tracker["serves_pizza"], FieldTracker(get=1, set=0))
+
+    if DJANGO_VERSION[0] < 4:
+        # See descriptor issue solved in PR #14508.
+        test_inheritance = unittest.expectedFailure(test_inheritance)

@@ -174,8 +174,21 @@ class Query(Promisable):
             yield "Use .values() or .values_list()"
 
 
+class QueryGroupManager(models.Manager):
+    def annotate_num_queries(self):
+        # https://stackoverflow.com/questions/52027676/using-subquery-to-annotate-a-count
+        num_queries = (
+            QuerySetTracking.objects.filter(query_group_id=models.OuterRef("pk"))
+            .order_by()
+            .annotate(total=models.Func(models.F("num_occurrences"), function="Sum"))
+            .values("total")
+        )
+        return self.annotate(num_queries=models.Subquery(num_queries))
+
+
 class QueryGroup(Promisable):
     queries = models.ManyToManyField(Query, through="QuerySetTracking")
+    objects = QueryGroupManager()
 
     def get_absolute_url(self):
         return reverse("query-group", kwargs={"pk": self.pk})

@@ -62,10 +62,10 @@ class URLPathTrackingsView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["query_groups"] = (
-            QueryGroup.objects.filter(trackings__url_path_id=self.object.pk)
+            QueryGroup.objects.annotate_num_queries()
+            .filter(trackings__url_path_id=self.object.pk)
             .annotate(
-                num_trackings=Count("trackings", distinct=True),
-                num_queries=Count("queries", distinct=True),
+                num_trackings=Count("trackings"),
                 latest_run_at=Max("trackings__started_at"),
             )
             .order_by("-latest_run_at")
@@ -75,7 +75,9 @@ class URLPathTrackingsView(DetailView):
 
 class QueryGroupView(DetailView):
     template_name = "dj_tracker/query_group.html"
-    model = QueryGroup
+
+    def get_queryset(self):
+        return QueryGroup.objects.annotate_num_queries()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -109,7 +111,6 @@ class QueryGroupView(DetailView):
         context["qs_trackings"] = (
             tracking for tracking in trackings.values() if tracking.query.depth == 0
         )
-        context["num_queries"] = len(trackings)
         context["query_pks"] = pks
         return context
 

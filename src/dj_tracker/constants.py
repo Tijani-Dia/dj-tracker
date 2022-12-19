@@ -33,6 +33,7 @@ def _set_dj_tracker_settings():
         "COLLECTION_INTERVAL": 3,
         "APPS_TO_EXCLUDE": None,
         "IGNORE_MODULES": None,
+        "IGNORE_PATHS": None,
     }
     DJ_TRACKER_SETTINGS.update(getattr(settings, "DJ_TRACKER", {}))
 
@@ -80,6 +81,16 @@ def _get_ignored_modules():
         ignored_modules.update(set(extra_ignored_modules))
 
     return ignored_modules
+
+
+def _get_ignored_paths():
+    _set_dj_tracker_settings()
+
+    ignored_paths = {"/dj-tracker/"}
+    if extra_ignored_paths := DJ_TRACKER_SETTINGS.pop("IGNORE_PATHS"):
+        ignored_paths.update(set(extra_ignored_paths))
+
+    return ignored_paths
 
 
 def _get_collection_interval():

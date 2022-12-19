@@ -15,6 +15,16 @@ DJ_TRACKER = {
 }
 ```
 
+### `IGNORE_PATHS`
+
+Requests to URLs containing any component defined in this setting aren't tracked.
+
+```python
+DJ_TRACKER = {
+    "IGNORE_PATHS": {"/favicon.ico", "/static/"}
+}
+```
+
 ### `IGNORE_MODULES`
 
 A set of file or module names to ignore in tracebacks.

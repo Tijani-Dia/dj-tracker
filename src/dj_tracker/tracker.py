@@ -6,7 +6,8 @@ from time import perf_counter_ns
 from django.db.models import DEFERRED, query
 
 from dj_tracker.collector import Collector
-from dj_tracker.constants import STOPPING, TRACKED_MODELS
+from dj_tracker.constants import IGNORED_PATHS, STOPPING, TRACKED_MODELS
+from dj_tracker.context import get_request
 from dj_tracker.datastructures import (
     FieldTracker,
     InstanceTracker,
@@ -19,10 +20,6 @@ from dj_tracker.models import QueryType
 _started = False
 _worker_thread = None
 _lock = threading.Lock()
-
-
-def model_is_tracked(model):
-    return model in TRACKED_MODELS
 
 
 class FromDBDescriptor:
@@ -67,17 +64,16 @@ def patch_queryset_method(method, query_type):
     @wraps(method)
     def wrapper(queryset):
         cached_result = queryset._result_cache
-        if not_cached := cached_result is None:
+        if tracking := cached_result is None and should_track_query(queryset.model):
             started_at = perf_counter_ns()
 
         result = method(queryset)
 
-        if not_cached:
+        if tracking:
             duration = perf_counter_ns() - started_at
-            if model_is_tracked(queryset.model):
-                QuerySetTracker(
-                    queryset, query_type, result_cache_collected=True
-                ).iter_done(queryset, duration)
+            QuerySetTracker(
+                queryset, query_type, result_cache_collected=True
+            ).iter_done(queryset, duration)
 
         return result
 
@@ -118,7 +114,7 @@ def track_instances(Iterable, check_accessed_instances):
         qs = self.queryset
         model = qs.model
 
-        if not model_is_tracked(model):
+        if not should_track_query(model):
             yield from iterator
             return
 
@@ -229,3 +225,15 @@ def stop():
         STOPPING.set()
         _worker_thread.join()
         _worker_thread = None
+
+
+def model_is_tracked(model):
+    return model in TRACKED_MODELS
+
+
+def ignore_path(path):
+    return any(component in path for component in IGNORED_PATHS)
+
+
+def should_track_query(model):
+    return model_is_tracked(model) and not ignore_path(get_request().path)

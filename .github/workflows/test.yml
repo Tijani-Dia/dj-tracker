@@ -1,52 +1,76 @@
 name: Django Tracker CI
 
 on:
-    push:
-        branches:
-            - main
+  push:
+    branches:
+      - main
 
-    pull_request:
+  pull_request:
 
 jobs:
-    test:
-        name: Test ${{ matrix.python-version }}
-        runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                python-version: ["3.8", "3.9", "3.10", "3.11"]
+  test:
+    name: Test ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
 
-        steps:
-            - uses: actions/checkout@v2
-            - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v2
-              with:
-                  python-version: ${{ matrix.python-version }}
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  python -m pip install tox
-                  python -m pip install --pre tox-gh-actions
-            - name: Test
-              run: tox
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install tox
+          python -m pip install --pre tox-gh-actions
+      - name: Test
+        run: tox
 
-    lint:
-        name: Lint ${{ matrix.toxenv }}
-        runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                python: ["3.10"]
-                toxenv: ["black", "isort", "flake8"]
-        steps:
-            - uses: actions/checkout@v2
-            - name: Set up Python ${{ matrix.python }}
-              uses: actions/setup-python@v2
-              with:
-                  python-version: ${{ matrix.python }}
-            - name: Install Tox
-              run: |
-                  python -m pip install tox
-            - name: Run ${{ matrix.toxenv }}
-              run: |
-                  tox
-              env:
-                  TOXENV: ${{ matrix.toxenv }}
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10"]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: |
+          pip install -e '.[test]'
+          pip install coverage
+      - name: Test
+        run: |
+          coverage run manage.py test
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true
+
+  lint:
+    name: Lint ${{ matrix.toxenv }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10"]
+        toxenv: ["black", "isort", "flake8"]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Tox
+        run: |
+          python -m pip install tox
+      - name: Run ${{ matrix.toxenv }}
+        run: |
+          tox
+        env:
+          TOXENV: ${{ matrix.toxenv }}

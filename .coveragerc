@@ -1,0 +1,4 @@
+[run]
+branch = True
+include = src/dj_tracker/*
+omit = */migrations/*,*/tests/*

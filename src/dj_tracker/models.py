@@ -65,6 +65,7 @@ class SourceCode(Promisable):
     filename = models.ForeignKey(SourceFile, on_delete=models.CASCADE)
     lineno = models.PositiveIntegerField()
     func = models.CharField(max_length=255)
+    code = models.TextField()
 
     def __str__(self):
         return f"{self.filename} - {self.func}:{self.lineno}"

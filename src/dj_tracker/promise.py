@@ -1,5 +1,6 @@
 from collections import Counter
 from itertools import takewhile
+from linecache import getline
 from sys import _getframe
 from typing import Dict, Optional, Tuple
 
@@ -207,8 +208,8 @@ class SourceCodePromise(Promise):
     __slots__ = ()
 
     @staticmethod
-    def get_cache_key(*, filename_id: int, func: str, lineno: int) -> int:
-        return hash((filename_id, hash_string(func), lineno))
+    def get_cache_key(*, filename_id: int, func: str, code: str, lineno: int) -> int:
+        return hash((filename_id, hash_string(func), hash_string(code), lineno))
 
 
 class StackPromise(Promise):
@@ -280,11 +281,13 @@ class TracebackPromise(Promise):
             while frame:
                 code = frame.f_code
                 filename = code.co_filename
+                lineno = frame.f_lineno
                 stack.append(
                     (
                         get_source_code_id(
                             func=code.co_name,
-                            lineno=frame.f_lineno,
+                            code=getline(filename, lineno),
+                            lineno=lineno,
                             filename_id=get_source_file_id(name=filename),
                         ),
                         ignore_frame(filename),

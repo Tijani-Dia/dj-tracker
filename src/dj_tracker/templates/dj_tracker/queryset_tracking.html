@@ -34,16 +34,16 @@
                         aria-expanded="false">
                     Toggle top
                 </button>
-                <div class="collapse" id="stack-top">
+                <div class="collapse my-2" id="stack-top">
                     {% for entry in object.traceback.entries.top %}
-                        <p>{{ entry.func }}</p>
-                        <p class="card-text font-monospace">{{ entry.filename }}:{{ entry.lineno }}</p>
+                        <p class="bg-secondary text-light p-2">{{ entry.filename }}:{{ entry.lineno }} - {{ entry.func }}</p>
+                        <p class="card-text font-monospace">{{ entry.code }}</p>
                     {% endfor %}
                 </div>
-                <div class="stack-middle">
+                <div class="stack-middle my-2">
                     {% for entry in object.traceback.entries.middle %}
-                        <p>{{ entry.func }}</p>
-                        <p class="card-text font-monospace">{{ entry.filename }}:{{ entry.lineno }}</p>
+                        <p class="bg-secondary text-light p-2">{{ entry.filename }}:{{ entry.lineno }} - {{ entry.func }}</p>
+                        <p class="card-text font-monospace">{{ entry.code }}</p>
                     {% endfor %}
                 </div>
                 <button class="btn btn-secondary"
@@ -53,10 +53,10 @@
                         aria-expanded="false">
                     Toggle bottom
                 </button>
-                <div class="collapse" id="stack-bottom">
+                <div class="collapse my-2" id="stack-bottom">
                     {% for entry in object.traceback.entries.bottom %}
-                        <p>{{ entry.func }}</p>
-                        <p class="card-text font-monospace">{{ entry.filename }}:{{ entry.lineno }}</p>
+                        <p class="bg-secondary text-light p-2">{{ entry.filename }}:{{ entry.lineno }} - {{ entry.func }}</p>
+                        <p class="card-text font-monospace">{{ entry.code }}</p>
                     {% endfor %}
                 </div>
             </div>

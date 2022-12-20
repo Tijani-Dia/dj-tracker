@@ -46,6 +46,11 @@
                         <p class="card-text font-monospace">{{ entry.code }}</p>
                     {% endfor %}
                 </div>
+                {% if object.traceback.template_info %}
+                    <h5>Template Info</h5>
+                    <p class="bg-secondary text-light p-2">{{ object.traceback.template_info.filename }}:{{ object.traceback.template_info.lineno }}</p>
+                    <p class="card-text font-monospace">{{ object.traceback.template_info.code }}</p>
+                {% endif %}
                 <button class="btn btn-secondary"
                         type="button"
                         data-bs-toggle="collapse"

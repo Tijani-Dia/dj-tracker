@@ -6,6 +6,7 @@ from typing import Dict, Optional, Tuple
 
 from django.apps import apps
 from django.db import models
+from django.template import Node
 
 from dj_tracker.utils import cached_attribute, delay, hash_string, ignore_frame
 
@@ -208,8 +209,10 @@ class SourceCodePromise(Promise):
     __slots__ = ()
 
     @staticmethod
-    def get_cache_key(*, filename_id: int, func: str, code: str, lineno: int) -> int:
-        return hash((filename_id, hash_string(func), hash_string(code), lineno))
+    def get_cache_key(
+        *, filename_id: int, lineno: int, code: str, func: str = ""
+    ) -> int:
+        return hash((filename_id, lineno, hash_string(code), hash_string(func)))
 
 
 class StackPromise(Promise):
@@ -264,8 +267,16 @@ class TracebackPromise(Promise):
     __slots__ = ()
 
     @staticmethod
-    def get_cache_key(*, top_id: int, middle_id: int, bottom_id: int) -> int:
-        return hash((top_id, middle_id, bottom_id))
+    def get_cache_key(
+        *,
+        top_id: int,
+        middle_id: int,
+        bottom_id: int,
+        template_info_id: Optional[int] = None,
+    ) -> int:
+        return hash(
+            (top_id, middle_id, bottom_id, template_info_id if template_info_id else 0)
+        )
 
     @classmethod
     def get(cls, ignore_frames: int = 3) -> int:
@@ -274,18 +285,20 @@ class TracebackPromise(Promise):
         """
         stack = []
         frame = _getframe(ignore_frames)
+        template_info = None
         get_source_code_id = SourceCodePromise.get_or_create
         get_source_file_id = SourceFilePromise.get_or_create
 
         try:
             while frame:
                 code = frame.f_code
+                func = code.co_name
                 filename = code.co_filename
                 lineno = frame.f_lineno
                 stack.append(
                     (
                         get_source_code_id(
-                            func=code.co_name,
+                            func=func,
                             code=getline(filename, lineno),
                             lineno=lineno,
                             filename_id=get_source_file_id(name=filename),
@@ -293,6 +306,19 @@ class TracebackPromise(Promise):
                         ignore_frame(filename),
                     )
                 )
+
+                if not template_info and func == "render":
+                    node = frame.f_locals.get("self")
+                    if isinstance(node, Node):
+                        token = node.token
+                        lineno = token.lineno
+                        template_name = node.origin.name
+                        template_info = get_source_code_id(
+                            code=getline(template_name, lineno),
+                            lineno=lineno,
+                            filename_id=get_source_file_id(name=template_name),
+                        )
+
                 frame = frame.f_back
         finally:
             del frame
@@ -322,6 +348,7 @@ class TracebackPromise(Promise):
             top_id=get_stack_id(entries=top_entries),
             middle_id=get_stack_id(entries=middle_entries),
             bottom_id=get_stack_id(entries=bottom_entries),
+            template_info_id=template_info,
         )
 
 

@@ -124,5 +124,8 @@ def _get_stopping():
 def _get_dummy_request():
     class DummyRequest:
         path = ""
+        method = ""
+        content_type = ""
+        META = {}
 
     return DummyRequest

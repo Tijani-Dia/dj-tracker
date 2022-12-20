@@ -154,14 +154,26 @@ class InstanceTracker(dict):
 
 
 class RequestTracker:
-    __slots__ = ("path", "queries", "num_queries", "collected", "started_at")
+    __slots__ = (
+        "path",
+        "method",
+        "content_type",
+        "query_string",
+        "started_at",
+        "queries",
+        "num_queries",
+        "collected",
+    )
 
     def __init__(self, request):
         self.path = request.path
+        self.method = request.method
+        self.content_type = request.content_type
+        self.query_string = request.META.get("QUERY_STRING", "")
+        self.started_at = now()
         self.queries = []
         self.num_queries = 0
         self.collected = False
-        self.started_at = now()
         weakref_finalize(request, self.request_collected)
         Collector.add_request(self)
 

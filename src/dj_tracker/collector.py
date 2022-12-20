@@ -2,7 +2,7 @@ import time
 
 from dj_tracker import constants
 from dj_tracker.logging import logger
-from dj_tracker.promise import QueryGroupPromise, QueryPromise, URLPathPromise
+from dj_tracker.promise import QueryGroupPromise, QueryPromise, RequestPromise
 from dj_tracker.utils import delay
 
 
@@ -76,13 +76,18 @@ class Collector:
         trackings = tuple(
             Tracking(
                 started_at=request.started_at,
-                url_path_id=URLPathPromise.get_or_create(path=request.path),
+                request_id=RequestPromise.get_or_create(
+                    path=request.path,
+                    method=request.method,
+                    content_type=request.content_type,
+                    query_string=request.query_string,
+                ),
                 query_group_id=QueryGroupPromise.get_or_create(queries=request.queries),
             )
             for request in cls.requests_ready[:]
         )
 
-        URLPathPromise.resolve()
+        RequestPromise.resolve()
         QueryGroupPromise.resolve()
         delay(Tracking.objects.bulk_create)(trackings)
 

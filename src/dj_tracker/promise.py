@@ -192,6 +192,32 @@ class URLPathPromise(Promise):
         return hash_string(path)
 
 
+class RequestPromise(Promise):
+    model_string = "dj_tracker.Request"
+    deps = (URLPathPromise,)
+
+    __slots__ = ()
+
+    @staticmethod
+    def get_cache_key(
+        *, path_id: int, method: str, content_type: str, query_string: str
+    ) -> int:
+        return hash(
+            (
+                path_id,
+                hash_string(method),
+                hash_string(content_type),
+                hash_string(query_string),
+            )
+        )
+
+    @classmethod
+    def get_or_create(cls, *, path, **kwargs):
+        return super().get_or_create(
+            path_id=URLPathPromise.get_or_create(path=path), **kwargs
+        )
+
+
 class SourceFilePromise(Promise):
     model_string = "dj_tracker.SourceFile"
 

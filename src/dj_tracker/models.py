@@ -54,6 +54,13 @@ class URLPath(Promisable):
         return reverse("url-trackings", kwargs={"pk": self.pk})
 
 
+class Request(Promisable):
+    path = models.ForeignKey(URLPath, on_delete=models.CASCADE, related_name="requests")
+    method = models.CharField(max_length=8)
+    content_type = models.CharField(max_length=256)
+    query_string = models.CharField(max_length=1024)
+
+
 class SourceFile(Promisable):
     name = models.CharField(max_length=255)
 
@@ -213,8 +220,8 @@ class QuerySetTracking(models.Model):
 
 class Tracking(models.Model):
     started_at = models.DateTimeField()
-    url_path = models.ForeignKey(
-        URLPath, on_delete=models.CASCADE, related_name="trackings"
+    request = models.ForeignKey(
+        Request, on_delete=models.CASCADE, related_name="trackings"
     )
     query_group = models.ForeignKey(
         QueryGroup, on_delete=models.CASCADE, related_name="trackings"

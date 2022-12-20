@@ -64,8 +64,8 @@ class SourceFile(Promisable):
 class SourceCode(Promisable):
     filename = models.ForeignKey(SourceFile, on_delete=models.CASCADE)
     lineno = models.PositiveIntegerField()
-    func = models.CharField(max_length=255)
     code = models.TextField()
+    func = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
         return f"{self.filename} - {self.func}:{self.lineno}"
@@ -88,6 +88,7 @@ class Traceback(Promisable):
     top = models.ForeignKey(Stack, on_delete=models.CASCADE, related_name="+")
     middle = models.ForeignKey(Stack, on_delete=models.CASCADE, related_name="+")
     bottom = models.ForeignKey(Stack, on_delete=models.CASCADE, related_name="+")
+    template_info = models.ForeignKey(SourceCode, on_delete=models.CASCADE, null=True)
 
     @cached_property
     def entries(self):

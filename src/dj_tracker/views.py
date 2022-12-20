@@ -125,6 +125,6 @@ class QuerysetTrackingView(DetailView):
                 "field_tracking__field"
             ).order_by("-field_tracking__get_count", "-field_tracking__set_count"),
         )
-        return Query.objects.select_related("sql", "traceback").prefetch_related(
-            prefetch_instance_trackings
-        )
+        return Query.objects.select_related(
+            "sql", "traceback__template_info__filename"
+        ).prefetch_related(prefetch_instance_trackings)

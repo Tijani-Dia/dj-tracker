@@ -1,29 +1,27 @@
 from functools import wraps
 
-from django.contrib.contenttypes.fields import (
-    GenericForeignKey,
-    ReverseGenericManyToOneDescriptor,
-)
-from django.db.models.fields.related_descriptors import (
-    ForwardManyToOneDescriptor,
-    ForwardOneToOneDescriptor,
-    ManyToManyDescriptor,
-    ReverseManyToOneDescriptor,
-    ReverseOneToOneDescriptor,
-)
-from django.db.models.query_utils import DeferredAttribute
-
 from dj_tracker.datastructures import FieldTracker
 
 
 class FieldDescriptor:
-    __slots__ = ("descriptor", "attname")
-
     accessed_from = "__dict__"
+
+    __slots__ = ("descriptor", "attname")
 
     def __init__(self, descriptor, attname):
         self.descriptor = descriptor
         self.attname = attname
+
+    def __get__(self, instance, cls):
+        if instance is None:
+            return self.descriptor
+
+        value = self.descriptor.__get__(instance, cls)
+
+        if field_tracker := self.get_field_tracker(instance):
+            field_tracker.get += 1
+
+        return value
 
     def get_field_tracker(self, instance):
         if not (tracker := getattr(instance, "_tracker", None)):
@@ -39,19 +37,8 @@ class FieldDescriptor:
         tracker[attname] = field_tracker = FieldTracker()
         return field_tracker
 
-    def __get__(self, instance, cls):
-        if instance is None:
-            return self.descriptor
 
-        value = self.descriptor.__get__(instance, cls)
-
-        if field_tracker := self.get_field_tracker(instance):
-            field_tracker.get += 1
-
-        return value
-
-
-class AttributeDescriptor(FieldDescriptor):
+class DeferredAttributeDescriptor(FieldDescriptor):
     __slots__ = ()
 
     def __init__(self, descriptor, attname):
@@ -81,10 +68,19 @@ class AttributeDescriptor(FieldDescriptor):
         del instance.__dict__[self.attname]
 
 
-class SingleRelationDescriptor(FieldDescriptor):
+class EditableFieldDescriptor(FieldDescriptor):
     __slots__ = ()
 
+    def __set__(self, instance, value):
+        self.descriptor.__set__(instance, value)
+        if field_tracker := self.get_field_tracker(instance):
+            field_tracker.set += 1
+
+
+class SingleRelationDescriptor(EditableFieldDescriptor):
     accessed_from = "_state"
+
+    __slots__ = ()
 
     def __init__(self, descriptor, attname):
         super().__init__(descriptor, attname)
@@ -98,11 +94,6 @@ class SingleRelationDescriptor(FieldDescriptor):
             return get_queryset(**hints, field=attname)
 
         return wrapper
-
-    def __set__(self, instance, value):
-        self.descriptor.__set__(instance, value)
-        if field_tracker := self.get_field_tracker(instance):
-            field_tracker.set += 1
 
 
 class MultipleRelationDescriptor(FieldDescriptor):
@@ -128,12 +119,12 @@ class MultipleRelationDescriptor(FieldDescriptor):
 
 
 DESCRIPTORS_MAP = {
-    DeferredAttribute: AttributeDescriptor,
-    GenericForeignKey: SingleRelationDescriptor,
-    ForwardManyToOneDescriptor: SingleRelationDescriptor,
-    ForwardOneToOneDescriptor: SingleRelationDescriptor,
-    ReverseOneToOneDescriptor: SingleRelationDescriptor,
-    ManyToManyDescriptor: MultipleRelationDescriptor,
-    ReverseManyToOneDescriptor: MultipleRelationDescriptor,
-    ReverseGenericManyToOneDescriptor: MultipleRelationDescriptor,
+    "DeferredAttribute": DeferredAttributeDescriptor,
+    "GenericForeignKey": SingleRelationDescriptor,
+    "ForwardManyToOneDescriptor": SingleRelationDescriptor,
+    "ForwardOneToOneDescriptor": SingleRelationDescriptor,
+    "ReverseOneToOneDescriptor": SingleRelationDescriptor,
+    "ManyToManyDescriptor": MultipleRelationDescriptor,
+    "ReverseManyToOneDescriptor": MultipleRelationDescriptor,
+    "ReverseGenericManyToOneDescriptor": MultipleRelationDescriptor,
 }

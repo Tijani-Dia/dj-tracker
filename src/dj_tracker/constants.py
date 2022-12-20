@@ -31,6 +31,7 @@ def _set_dj_tracker_settings():
 
     DJ_TRACKER_SETTINGS = {
         "COLLECTION_INTERVAL": 3,
+        "FIELD_DESCRIPTORS": {},
         "APPS_TO_EXCLUDE": None,
         "IGNORE_MODULES": None,
         "IGNORE_PATHS": None,
@@ -91,6 +92,16 @@ def _get_ignored_paths():
         ignored_paths.update(set(extra_ignored_paths))
 
     return ignored_paths
+
+
+def _get_extra_descriptors():
+    from django.utils.module_loading import import_string
+
+    _set_dj_tracker_settings()
+    return {
+        name: import_string(path)
+        for name, path in DJ_TRACKER_SETTINGS.pop("FIELD_DESCRIPTORS").items()
+    }
 
 
 def _get_collection_interval():

@@ -6,7 +6,12 @@ from time import perf_counter_ns
 from django.db.models import DEFERRED, query
 
 from dj_tracker.collector import Collector
-from dj_tracker.constants import IGNORED_PATHS, STOPPING, TRACKED_MODELS
+from dj_tracker.constants import (
+    EXTRA_DESCRIPTORS,
+    IGNORED_PATHS,
+    STOPPING,
+    TRACKED_MODELS,
+)
 from dj_tracker.context import get_request
 from dj_tracker.datastructures import (
     FieldTracker,
@@ -204,13 +209,13 @@ def start():
         patch_rel_populator()
 
         patched_get_attr = patch_getattr()
+        descriptors = {**DESCRIPTORS_MAP, **EXTRA_DESCRIPTORS}
         for model in TRACKED_MODELS:
             model.from_db = FromDBDescriptor(model)
             model.__getattribute__ = patched_get_attr
 
             for attname, attr in model.__dict__.items():
-                if (klass := type(attr)) in DESCRIPTORS_MAP:
-                    Descriptor = DESCRIPTORS_MAP[klass]
+                if Descriptor := descriptors.get(type(attr).__name__):
                     setattr(model, attname, Descriptor(attr, attname))
 
         _worker_thread = threading.Thread(target=Collector.run, daemon=True)

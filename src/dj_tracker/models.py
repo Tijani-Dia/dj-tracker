@@ -1,11 +1,5 @@
-from itertools import groupby
-from operator import attrgetter
-
 from django.db import models
 from django.urls import reverse
-from django.utils.functional import cached_property
-
-from dj_tracker.promise import Promisable
 
 
 class QueryType(models.TextChoices):
@@ -20,6 +14,18 @@ class IterableClass(models.TextChoices):
     VALUES_LIST = "ValuesListIterable"
     FLAT_VALUES_LIST = "FlatValuesListIterable"
     NAMED_VALUES_LIST = "NamedValuesListIterable"
+
+
+class Promisable(models.Model):
+    """
+    A Promisable is a model whose instances' primary keys (`cache_key`)
+    are deduced from the data they hold.
+    """
+
+    cache_key = models.BigIntegerField(primary_key=True)
+
+    class Meta:
+        abstract = True
 
 
 class Model(Promisable):
@@ -50,15 +56,19 @@ class URLPath(Promisable):
     def __str__(self):
         return self.path
 
-    def get_absolute_url(self):
-        return reverse("url-trackings", kwargs={"pk": self.pk})
-
 
 class Request(Promisable):
     path = models.ForeignKey(URLPath, on_delete=models.CASCADE, related_name="requests")
     method = models.CharField(max_length=8)
     content_type = models.CharField(max_length=256)
     query_string = models.CharField(max_length=1024)
+
+    def get_absolute_url(self):
+        return reverse("url-trackings", kwargs={"pk": self.pk})
+
+    def __str__(self):
+        base = f"{self.method}:{self.path}"
+        return base if not self.query_string else f"{base}?{self.query_string}"
 
 
 class SourceFile(Promisable):
@@ -78,48 +88,33 @@ class SourceCode(Promisable):
         return f"{self.filename} - {self.func}:{self.lineno}"
 
 
-class Stack(Promisable):
-    entries = models.ManyToManyField(SourceCode, through="StackEntry")
+class Traceback(Promisable):
+    stack = models.ManyToManyField(SourceCode, through="StackEntry", related_name="+")
+    template_info = models.ForeignKey(SourceCode, on_delete=models.CASCADE, null=True)
+
+    def entries(self):
+        return (
+            SourceCode.objects.filter(entries__traceback_id=self.pk)
+            .select_related("filename")
+            .order_by("entries__index")
+        )
 
 
 class StackEntry(models.Model):
-    stack = models.ForeignKey(Stack, on_delete=models.CASCADE)
-    source = models.ForeignKey(SourceCode, on_delete=models.CASCADE)
+    traceback = models.ForeignKey(Traceback, on_delete=models.CASCADE)
+    source = models.ForeignKey(
+        SourceCode, on_delete=models.CASCADE, related_name="entries"
+    )
     index = models.PositiveSmallIntegerField()
 
     class Meta:
         ordering = ("index",)
 
 
-class Traceback(Promisable):
-    top = models.ForeignKey(Stack, on_delete=models.CASCADE, related_name="+")
-    middle = models.ForeignKey(Stack, on_delete=models.CASCADE, related_name="+")
-    bottom = models.ForeignKey(Stack, on_delete=models.CASCADE, related_name="+")
-    template_info = models.ForeignKey(SourceCode, on_delete=models.CASCADE, null=True)
-
-    @cached_property
-    def entries(self):
-        entries = (
-            StackEntry.objects.select_related("source__filename")
-            .filter(stack_id__in=(self.top_id, self.middle_id, self.bottom_id))
-            .order_by("stack_id", "index")
-            .iterator()
-        )
-        keys_map = {
-            self.top_id: "top",
-            self.middle_id: "middle",
-            self.bottom_id: "bottom",
-        }
-        return {
-            keys_map[stack_id]: tuple(entry.source for entry in entries)
-            for stack_id, entries in groupby(entries, attrgetter("stack_id"))
-        }
-
-
 class FieldTracking(Promisable):
     field = models.ForeignKey(Field, on_delete=models.CASCADE, related_name="trackings")
-    get_count = models.PositiveIntegerField()
-    set_count = models.PositiveIntegerField()
+    get_count = models.PositiveIntegerField(default=0)
+    set_count = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.field}: Get: {self.get_count}, Set: {self.set_count}"
@@ -146,16 +141,17 @@ class Query(Promisable):
     sql = models.ForeignKey(SQL, on_delete=models.CASCADE)
     model = models.ForeignKey(Model, on_delete=models.CASCADE)
     traceback = models.ForeignKey(Traceback, on_delete=models.CASCADE)
+    average_duration = models.PositiveIntegerField(null=True)
     cache_hits = models.PositiveSmallIntegerField(null=True)
     iterable_class = models.CharField(
         max_length=24, choices=IterableClass.choices, blank=True
     )
     query_type = models.CharField(choices=QueryType.choices, max_length=6)
-    depth = models.PositiveSmallIntegerField()
+    depth = models.PositiveSmallIntegerField(default=0)
     attributes_accessed = models.JSONField(null=True)
-    len_calls = models.PositiveSmallIntegerField()
-    exists_calls = models.PositiveSmallIntegerField()
-    contains_calls = models.PositiveSmallIntegerField()
+    len_calls = models.PositiveSmallIntegerField(null=True)
+    exists_calls = models.PositiveSmallIntegerField(null=True)
+    contains_calls = models.PositiveSmallIntegerField(null=True)
     num_instances = models.PositiveIntegerField()
     instance_trackings = models.ManyToManyField(InstanceTracking)
     field = models.ForeignKey(Field, on_delete=models.CASCADE, null=True)
@@ -173,11 +169,11 @@ class Query(Promisable):
         cache_hits = self.cache_hits
         if cache_hits == 1:
             yield "Use .iterator()"
-        if cache_hits == 2 * self.len_calls - 1:
+        if self.len_calls and cache_hits == 2 * self.len_calls - 1:
             yield "Use .count()"
-        elif cache_hits == 2 * self.exists_calls:
+        elif self.exists_calls and cache_hits == 2 * self.exists_calls:
             yield "Use .exists()"
-        elif cache_hits == 2 * self.contains_calls:
+        elif self.contains_calls and cache_hits == 2 * self.contains_calls:
             yield "Use .contains()"
         if self.attributes_accessed == {}:
             yield "Use .values() or .values_list()"
@@ -208,8 +204,6 @@ class QuerySetTracking(models.Model):
     query_group = models.ForeignKey(QueryGroup, on_delete=models.CASCADE)
     # Number of occurrences of query in query_group.
     num_occurrences = models.PositiveSmallIntegerField()
-    # Average duration of query in this group.
-    average_duration = models.DurationField()
 
     def get_absolute_url(self):
         return self.query.get_absolute_url()

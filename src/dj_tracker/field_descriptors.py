@@ -1,11 +1,7 @@
 from functools import wraps
 
-from dj_tracker.datastructures import FieldTracker
-
 
 class FieldDescriptor:
-    accessed_from = "__dict__"
-
     __slots__ = ("descriptor", "attname")
 
     def __init__(self, descriptor, attname):
@@ -13,29 +9,14 @@ class FieldDescriptor:
         self.attname = attname
 
     def __get__(self, instance, cls):
-        if instance is None:
-            return self.descriptor
+        if instance is not None:
+            value = self.descriptor.__get__(instance, cls)
+            if instance_tracker := getattr(instance, "_tracker", None):
+                instance_tracker.get_field_tracker(self.attname).get += 1
 
-        value = self.descriptor.__get__(instance, cls)
+            return value
 
-        if field_tracker := self.get_field_tracker(instance):
-            field_tracker.get += 1
-
-        return value
-
-    def get_field_tracker(self, instance):
-        if not (tracker := getattr(instance, "_tracker", None)):
-            return
-
-        if qs_tracker := getattr(tracker, "queryset", None):
-            qs_tracker._attributes_accessed[self.accessed_from] -= 1
-
-        attname = self.attname
-        if field_tracker := tracker.get(attname):
-            return field_tracker
-
-        tracker[attname] = field_tracker = FieldTracker()
-        return field_tracker
+        return self.descriptor
 
 
 class DeferredAttributeDescriptor(FieldDescriptor):
@@ -52,8 +33,10 @@ class DeferredAttributeDescriptor(FieldDescriptor):
         @wraps(_check_parent_chain)
         def wrapper(instance):
             value = _check_parent_chain(instance)
-            if value is None and (tracker := getattr(instance, "_tracker", None)):
-                tracker.queryset.add_deferred_field(attname, instance)
+            if value is None and (
+                instance_tracker := getattr(instance, "_tracker", None)
+            ):
+                instance_tracker.queryset.add_deferred_field(attname, instance)
 
             return value
 
@@ -61,8 +44,8 @@ class DeferredAttributeDescriptor(FieldDescriptor):
 
     def __set__(self, instance, value):
         instance.__dict__[self.attname] = value
-        if field_tracker := self.get_field_tracker(instance):
-            field_tracker.set += 1
+        if instance_tracker := getattr(instance, "_tracker", None):
+            instance_tracker.get_field_tracker(self.attname).set += 1
 
     def __delete__(self, instance):
         del instance.__dict__[self.attname]
@@ -73,13 +56,11 @@ class EditableFieldDescriptor(FieldDescriptor):
 
     def __set__(self, instance, value):
         self.descriptor.__set__(instance, value)
-        if field_tracker := self.get_field_tracker(instance):
-            field_tracker.set += 1
+        if instance_tracker := getattr(instance, "_tracker", None):
+            instance_tracker.get_field_tracker(self.attname).set += 1
 
 
 class SingleRelationDescriptor(EditableFieldDescriptor):
-    accessed_from = "_state"
-
     __slots__ = ()
 
     def __init__(self, descriptor, attname):
@@ -120,6 +101,7 @@ class MultipleRelationDescriptor(FieldDescriptor):
 
 DESCRIPTORS_MAP = {
     "DeferredAttribute": DeferredAttributeDescriptor,
+    "ForeignKeyDeferredAttribute": EditableFieldDescriptor,
     "GenericForeignKey": SingleRelationDescriptor,
     "ForwardManyToOneDescriptor": SingleRelationDescriptor,
     "ForwardOneToOneDescriptor": SingleRelationDescriptor,

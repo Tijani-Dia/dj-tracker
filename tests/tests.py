@@ -1,17 +1,12 @@
 import random
 import unittest
+from operator import attrgetter
 
 from django import VERSION as DJANGO_VERSION
 from django.test import TestCase
 
 from dj_tracker import tracker
-from dj_tracker.datastructures import (
-    FieldTracker,
-    QuerySetTracker,
-    TrackedDict,
-    TrackedSequence,
-)
-from dj_tracker.promise import FieldPromise, ModelPromise
+from dj_tracker.datastructures import QuerySetTracker, TrackedDict, TrackedSequence
 from tests.factories import (
     AuthorFactory,
     BookFactory,
@@ -21,6 +16,8 @@ from tests.factories import (
     UserFactory,
 )
 from tests.models import Author, Book, Category, Comment, TastyRestaurant, User
+
+get_instance_tracker = attrgetter("_tracker")
 
 
 class DjTrackerTestCase(TestCase):
@@ -35,7 +32,7 @@ class TestAttributeTracker(DjTrackerTestCase):
             CategoryFactory()
 
         for i, category in enumerate(Category.objects.all()):
-            tracker = category._tracker
+            tracker = get_instance_tracker(category)
 
             name = category.name
             self.assertEqual(category.name, name)
@@ -53,12 +50,12 @@ class TestAttributeTracker(DjTrackerTestCase):
         BookFactory()
 
         book = Book.objects.last()
-        tracker = book._tracker
+        tracker = get_instance_tracker(book)
         self.assertIn("summary", tracker)
         self.assertIn("title", tracker)
 
         book = Book.objects.defer("summary", "title").last()
-        tracker = book._tracker
+        tracker = get_instance_tracker(book)
         self.assertNotIn("summary", tracker)
         self.assertNotIn("title", tracker)
 
@@ -67,14 +64,8 @@ class TestAttributeTracker(DjTrackerTestCase):
         self.assertEqual(tracker["title"].get, 2)
         self.assertEqual(tracker["title"].set, 1)
         related_qs_tracker = tracker.queryset.related_querysets[0]
-        self.assertIs(related_qs_tracker.related_queryset_id, tracker.queryset)
-        self.assertEqual(
-            related_qs_tracker.field_id,
-            FieldPromise.get_or_create(
-                name="title",
-                model_id=ModelPromise.get_or_create(label=Book._meta.label),
-            ),
-        )
+        self.assertIs(related_qs_tracker.related_queryset, tracker.queryset)
+        self.assertEqual(related_qs_tracker["field"], (Book, "title"))
 
 
 class TestForwardManyToOneTracker(DjTrackerTestCase):
@@ -88,7 +79,7 @@ class TestForwardManyToOneTracker(DjTrackerTestCase):
         book.category = CategoryFactory()
         self.assertNotEqual(book.category, category)
 
-        tracker = book._tracker
+        tracker = get_instance_tracker(book)
         self.assertEqual(tracker["category"].get, 2)
         self.assertEqual(tracker["category"].set, 1)
 
@@ -97,7 +88,8 @@ class TestForwardManyToOneTracker(DjTrackerTestCase):
         book = Book.objects.last()
         category = book.category
         self.assertEqual(
-            book._tracker.queryset, category._tracker.queryset.related_queryset_id
+            get_instance_tracker(book).queryset,
+            get_instance_tracker(category).queryset.related_queryset,
         )
 
 
@@ -111,7 +103,7 @@ class TestForwardOneToOneTracker(DjTrackerTestCase):
         self.assertEqual(author.user, user)
         author.user = None
 
-        tracker = author._tracker
+        tracker = get_instance_tracker(author)
         self.assertEqual(tracker["user"].get, 2)
         self.assertEqual(tracker["user"].set, 2)
 
@@ -120,7 +112,8 @@ class TestForwardOneToOneTracker(DjTrackerTestCase):
         author = Author.objects.last()
         user = author.user
         self.assertEqual(
-            author._tracker.queryset, user._tracker.queryset.related_queryset_id
+            get_instance_tracker(author).queryset,
+            get_instance_tracker(user).queryset.related_queryset,
         )
 
 
@@ -133,7 +126,7 @@ class TestReverseOneToOneTracker(DjTrackerTestCase):
         self.assertNotEqual(user.author, author)
         self.assertEqual(user.author, user.author)
 
-        tracker = user._tracker
+        tracker = get_instance_tracker(user)
         self.assertEqual(tracker["author"].get, 3)
         self.assertEqual(tracker["author"].set, 0)
 
@@ -142,7 +135,8 @@ class TestReverseOneToOneTracker(DjTrackerTestCase):
         user = User.objects.last()
         author = user.author
         self.assertEqual(
-            user._tracker.queryset, author._tracker.queryset.related_queryset_id
+            get_instance_tracker(user).queryset,
+            get_instance_tracker(author).queryset.related_queryset,
         )
 
 
@@ -158,7 +152,7 @@ class TestReverseManyToOneTracker(DjTrackerTestCase):
             Book.objects.filter(category=category), category.books.all(), ordered=False
         )
 
-        tracker = category._tracker
+        tracker = get_instance_tracker(category)
         self.assertEqual(tracker["books"].get, 2)
         self.assertEqual(tracker["books"].set, 0)
 
@@ -169,7 +163,8 @@ class TestReverseManyToOneTracker(DjTrackerTestCase):
         books = category.books.all()
         self.assertEqual(len(books), 1)
         self.assertEqual(
-            category._tracker.queryset, books[0]._tracker.queryset.related_queryset_id
+            get_instance_tracker(category).queryset,
+            get_instance_tracker(books[0]).queryset.related_queryset,
         )
 
 
@@ -185,11 +180,11 @@ class TestManyToManyTracker(DjTrackerTestCase):
         for author in book.authors.iterator():
             self.assertIn(book, author.books.all())
 
-            tracker = author._tracker
+            tracker = get_instance_tracker(author)
             self.assertEqual(tracker["books"].get, 1)
             self.assertEqual(tracker["books"].set, 0)
 
-        tracker = book._tracker
+        tracker = get_instance_tracker(book)
         self.assertEqual(tracker["authors"].get, 2)
         self.assertEqual(tracker["authors"].set, 0)
 
@@ -201,11 +196,13 @@ class TestManyToManyTracker(DjTrackerTestCase):
         book = Book.objects.last()
         author = book.authors.first()
         self.assertEqual(
-            book._tracker.queryset, author._tracker.queryset.related_queryset_id
+            get_instance_tracker(book).queryset,
+            get_instance_tracker(author).queryset.related_queryset,
         )
         books = author.books.all()
         self.assertEqual(
-            author._tracker.queryset, books[0]._tracker.queryset.related_queryset_id
+            get_instance_tracker(author).queryset,
+            get_instance_tracker(books[0]).queryset.related_queryset,
         )
 
 
@@ -219,7 +216,7 @@ class TestGenericForeignKeyTracker(DjTrackerTestCase):
         comment.content_object = BookFactory()
         self.assertNotEqual(comment.content_object, book)
 
-        tracker = comment._tracker
+        tracker = get_instance_tracker(comment)
         self.assertEqual(tracker["content_object"].get, 2)
         self.assertEqual(tracker["content_object"].set, 1)
 
@@ -229,7 +226,8 @@ class TestGenericForeignKeyTracker(DjTrackerTestCase):
         comment = Comment.objects.last()
         book = comment.content_object
         self.assertEqual(
-            comment._tracker.queryset, book._tracker.queryset.related_queryset_id
+            get_instance_tracker(comment).queryset,
+            get_instance_tracker(book).queryset.related_queryset,
         )
 
 
@@ -247,7 +245,7 @@ class TestReverseGenericManyToOneTracker(DjTrackerTestCase):
             ordered=False,
         )
 
-        tracker = book._tracker
+        tracker = get_instance_tracker(book)
         self.assertEqual(tracker["comments"].get, 2)
         self.assertEqual(tracker["comments"].set, 0)
 
@@ -260,7 +258,8 @@ class TestReverseGenericManyToOneTracker(DjTrackerTestCase):
         book = Book.objects.last()
         comments = book.comments.all()
         self.assertEqual(
-            book._tracker.queryset, comments[0]._tracker.queryset.related_queryset_id
+            get_instance_tracker(book).queryset,
+            get_instance_tracker(comments[0]).queryset.related_queryset,
         )
 
 
@@ -274,15 +273,15 @@ class TestPrefetchRelated(DjTrackerTestCase):
         with self.assertNumQueries(2):
             categories = Category.objects.prefetch_related("books").all()
             category = categories[0]
-            category_tracker = category._tracker
+            category_tracker = get_instance_tracker(category)
             books = category.books.all()
             self.assertEqual(len(books), 3)
 
             book = books[0]
-            book_tracker = books[0]._tracker
+            book_tracker = get_instance_tracker(books[0])
             self.assertEqual(book.category, category)
             self.assertIs(
-                category_tracker.queryset, book_tracker.queryset.related_queryset_id
+                category_tracker.queryset, book_tracker.queryset.related_queryset
             )
 
             self.assertEqual(category_tracker["books"].get, 3)
@@ -297,13 +296,16 @@ class TestSelectRelated(DjTrackerTestCase):
         comment = Comment.objects.select_related("user__author", "content_type").last()
 
         with self.assertNumQueries(0):
-            self.assertIsNotNone(comment._tracker.queryset)
-
-            self.assertIs(comment.user._tracker.queryset, comment._tracker.queryset)
+            self.assertIsNotNone(get_instance_tracker(comment).queryset)
 
             self.assertIs(
-                comment.user.author._tracker.queryset,
-                comment.user._tracker.queryset,
+                get_instance_tracker(comment.user).queryset,
+                get_instance_tracker(comment).queryset,
+            )
+
+            self.assertIs(
+                get_instance_tracker(comment.user.author).queryset,
+                get_instance_tracker(comment.user).queryset,
             )
 
     def test_select_related(self):
@@ -311,18 +313,21 @@ class TestSelectRelated(DjTrackerTestCase):
         comment = Comment.objects.select_related().last()
 
         with self.assertNumQueries(0):
-            self.assertIsNotNone(comment._tracker.queryset)
-
-            self.assertIs(comment.user._tracker.queryset, comment._tracker.queryset)
+            self.assertIsNotNone(get_instance_tracker(comment).queryset)
 
             self.assertIs(
-                comment.content_type._tracker.queryset,
-                comment._tracker.queryset,
+                get_instance_tracker(comment.user).queryset,
+                get_instance_tracker(comment).queryset,
+            )
+
+            self.assertIs(
+                get_instance_tracker(comment.content_type).queryset,
+                get_instance_tracker(comment).queryset,
             )
 
         self.assertIs(
-            comment.user.author._tracker.queryset.related_queryset_id,
-            comment._tracker.queryset,
+            get_instance_tracker(comment.user.author).queryset.related_queryset,
+            get_instance_tracker(comment).queryset,
         )
 
 
@@ -336,7 +341,7 @@ class TestCacheHits(DjTrackerTestCase):
                 for _ in range(n):
                     self.assertEqual(len(authors), 1)
 
-                self.assertEqual(authors._tracker.cache_hits, 2 * n - 1)
+                self.assertEqual(authors._tracker["cache_hits"], 2 * n - 1)
 
 
 class TestInstanceTracking(DjTrackerTestCase):
@@ -346,30 +351,11 @@ class TestInstanceTracking(DjTrackerTestCase):
 
         for book in Book.objects.all():
             self.assertTrue(book.title)
-            self.assertEqual(book._tracker["title"].get, 1)
+            self.assertEqual(get_instance_tracker(book)["title"].get, 1)
 
-        queryset = book._tracker.queryset
+        queryset = get_instance_tracker(book).queryset
         self.assertEqual(len(queryset.instance_trackers[("", Book)]), 3)
-        self.assertEqual(queryset.num_instances, 3)
-
-        book = None  # Clear reference
-        """gc.collect()
-        instance_trackings = None
-
-        def _set_instance_trackings():
-            while queryset.id is None:
-                time.sleep(0.01)
-
-            nonlocal instance_trackings
-            while not (instance_trackings := list(queryset.instances.all())):
-                time.sleep(0.01)
-
-        t = threading.Thread(target=_set_instance_trackings, daemon=True)
-        t.start()
-        t.join(timeout=1.5)
-
-        self.assertEqual(len(instance_trackings), 1)
-        self.assertEqual(instance_trackings[0].num_occurrences, 3)"""
+        self.assertEqual(queryset["num_instances"], 3)
 
 
 class TestValuesIterable(DjTrackerTestCase):
@@ -381,12 +367,13 @@ class TestValuesIterable(DjTrackerTestCase):
         for obj in objs:
             self.assertIsInstance(obj, TrackedDict)
             obj["date_of_birth"]
-            tracker = obj._tracker
-            self.assertEqual(tracker["date_of_birth"], FieldTracker(get=1, set=0))
+            tracker = get_instance_tracker(obj)
+            self.assertEqual(tracker["date_of_birth"].get, 1)
+            self.assertEqual(tracker["date_of_birth"].set, 0)
 
         qs_tracker = objs._tracker
         self.assertIsInstance(qs_tracker, QuerySetTracker)
-        self.assertEqual(qs_tracker.num_instances, 3)
+        self.assertEqual(qs_tracker["num_instances"], 3)
 
 
 class TestValuesListIterable(DjTrackerTestCase):
@@ -398,13 +385,14 @@ class TestValuesListIterable(DjTrackerTestCase):
         for obj in objs:
             self.assertIsInstance(obj, TrackedSequence)
             pk, user_id, date_of_birth, date_of_death = obj
-            tracker = obj._tracker
+            tracker = get_instance_tracker(obj)
             for i in range(4):
-                self.assertEqual(tracker[str(i)], FieldTracker(get=1, set=0))
+                self.assertEqual(tracker[str(i)].get, 1)
+                self.assertEqual(tracker[str(i)].set, 0)
 
         qs_tracker = objs._tracker
         self.assertIsInstance(qs_tracker, QuerySetTracker)
-        self.assertEqual(qs_tracker.num_instances, 3)
+        self.assertEqual(qs_tracker["num_instances"], 3)
 
     def test_flat_values_list(self):
         for _ in range(3):
@@ -419,7 +407,7 @@ class TestValuesListIterable(DjTrackerTestCase):
 
                 qs_tracker = objs._tracker
                 self.assertIsInstance(qs_tracker, QuerySetTracker)
-                self.assertEqual(qs_tracker.num_instances, 3)
+                self.assertEqual(qs_tracker["num_instances"], 3)
 
 
 class TestCountHint(DjTrackerTestCase):
@@ -433,8 +421,8 @@ class TestCountHint(DjTrackerTestCase):
                     self.assertEqual(len(qs), 2)
 
                 qs_tracker = qs._tracker
-                self.assertEqual(qs_tracker.len_calls, len_calls)
-                self.assertEqual(qs_tracker.cache_hits, 2 * len_calls - 1)
+                self.assertEqual(qs_tracker["len_calls"], len_calls)
+                self.assertEqual(qs_tracker["cache_hits"], 2 * len_calls - 1)
 
 
 class TestContainsHint(DjTrackerTestCase):
@@ -452,8 +440,8 @@ class TestContainsHint(DjTrackerTestCase):
                 for _ in range(contains_calls):
                     self.assertIn(author, qs)
 
-                self.assertEqual(qs_tracker.contains_calls, contains_calls)
-                self.assertEqual(qs_tracker.cache_hits, 2 * contains_calls)
+                self.assertEqual(qs_tracker["contains_calls"], contains_calls)
+                self.assertEqual(qs_tracker["cache_hits"], 2 * contains_calls)
 
 
 class TestExistsHint(DjTrackerTestCase):
@@ -468,8 +456,8 @@ class TestExistsHint(DjTrackerTestCase):
                 for _ in range(exists_calls):
                     self.assertTrue(qs)
 
-                self.assertEqual(qs_tracker.exists_calls, exists_calls)
-                self.assertEqual(qs_tracker.cache_hits, 2 * exists_calls)
+                self.assertEqual(qs_tracker["exists_calls"], exists_calls)
+                self.assertEqual(qs_tracker["cache_hits"], 2 * exists_calls)
 
 
 class TestIterator(DjTrackerTestCase):
@@ -479,7 +467,7 @@ class TestIterator(DjTrackerTestCase):
         for el in qs.iterator():
             self.assertTrue(el)
 
-        tracker = el._tracker.queryset
+        tracker = get_instance_tracker(el).queryset
         self.assertFalse(tracker.ready)
         el = None
         self.assertTrue(tracker.ready)
@@ -491,14 +479,8 @@ class TestRelatedField(DjTrackerTestCase):
         book = Book.objects.get()
         category = book.category
         self.assertTrue(category)
-        tracker = category._tracker.queryset
-        self.assertEqual(
-            tracker.field_id,
-            FieldPromise.get_or_create(
-                model_id=ModelPromise.get_or_create(label=Book._meta.label),
-                name="category",
-            ),
-        )
+        tracker = get_instance_tracker(category).queryset
+        self.assertEqual(tracker["field"], (Book, "category"))
 
     def test_related_manager_field(self):
         category = CategoryFactory()
@@ -509,13 +491,7 @@ class TestRelatedField(DjTrackerTestCase):
         books = category.books.all()
         self.assertEqual(len(books), 3)
         tracker = books._tracker
-        self.assertEqual(
-            tracker.field_id,
-            FieldPromise.get_or_create(
-                model_id=ModelPromise.get_or_create(label=Category._meta.label),
-                name="books",
-            ),
-        )
+        self.assertEqual(tracker["field"], (Category, "books"))
 
 
 class TestDepth(DjTrackerTestCase):
@@ -527,10 +503,13 @@ class TestDepth(DjTrackerTestCase):
         self.assertEqual(len(authors), 2)
         first_author_user = authors[0].user
 
-        self.assertEqual(book._tracker.queryset.depth, 0)
-        self.assertEqual(category._tracker.queryset.depth, 1)
-        self.assertEqual(authors._tracker.depth, 1)
-        self.assertEqual(first_author_user._tracker.queryset.depth, 2)
+        self.assertNotIn(
+            "depth",
+            get_instance_tracker(book).queryset,
+        )
+        self.assertEqual(get_instance_tracker(category).queryset["depth"], 1)
+        self.assertEqual(authors._tracker["depth"], 1)
+        self.assertEqual(get_instance_tracker(first_author_user).queryset["depth"], 2)
 
 
 class TestAttributesAccessed(DjTrackerTestCase):
@@ -544,27 +523,11 @@ class TestAttributesAccessed(DjTrackerTestCase):
             self.assertTrue(obj.title)
             self.assertEqual(obj.get_title_and_summary(), f"{obj.title}-{obj.summary}")
 
-        attrs_accessed = qs._tracker._attributes_accessed
-        len_qs = len(qs)
-
+        attrs_accessed = qs._tracker["attributes_accessed"]
         self.assertEqual(
-            set(attrs_accessed),
-            {
-                "__dict__",
-                "_state",
-                "_tracker",
-                "title",
-                "category",
-                "summary",
-                "get_title_and_summary",
-            },
+            set(attrs_accessed.keys()), {"__dict__", "_state", "get_title_and_summary"}
         )
-        self.assertEqual(attrs_accessed["__dict__"], 0)
-        self.assertEqual(attrs_accessed["_state"], 0)
-        self.assertEqual(attrs_accessed["category"], len_qs)
-        self.assertEqual(attrs_accessed["get_title_and_summary"], len_qs)
-        self.assertEqual(attrs_accessed["title"], 3 * len_qs)
-        self.assertEqual(attrs_accessed["summary"], 2 * len_qs)
+        self.assertEqual(attrs_accessed["get_title_and_summary"], len(qs))
 
 
 class TestInheritance(DjTrackerTestCase):
@@ -572,8 +535,30 @@ class TestInheritance(DjTrackerTestCase):
         TastyRestaurantFactory()
         resto = TastyRestaurant.objects.get()
         self.assertTrue(resto.serves_pizza)
-        self.assertEqual(resto._tracker["serves_pizza"], FieldTracker(get=1, set=0))
+        self.assertEqual(get_instance_tracker(resto)["serves_pizza"].get, 1)
+        self.assertEqual(get_instance_tracker(resto)["serves_pizza"].set, 0)
 
     if DJANGO_VERSION[0] < 4:
         # See descriptor issue solved in PR #14508.
         test_inheritance = unittest.expectedFailure(test_inheritance)
+
+
+class TestM2MThroughModels(DjTrackerTestCase):
+    def test_m2m_through_models_are_tracked(self):
+        BookFactory(authors=[AuthorFactory() for _ in range(3)])
+
+        BookAuthors = Book.authors.through
+        qs = BookAuthors.objects.all()
+        self.assertEqual(len(qs), 3)
+        for obj in qs:
+            self.assertEqual(obj.book_id, 1)
+            obj.author_id = 4
+            tracker = get_instance_tracker(obj)
+            self.assertEqual(tracker["book_id"].get, 1)
+            self.assertEqual(tracker["book_id"].set, 0)
+            self.assertEqual(tracker["author_id"].get, 0)
+            self.assertEqual(tracker["author_id"].set, 1)
+
+        qs_tracker = qs._tracker
+        self.assertEqual(qs_tracker["num_instances"], 3)
+        self.assertEqual(qs_tracker["model"], BookAuthors)

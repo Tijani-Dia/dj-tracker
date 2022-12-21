@@ -10,6 +10,7 @@ from dj_tracker.models import (
     Query,
     QueryGroup,
     QuerySetTracking,
+    Request,
     URLPath,
 )
 
@@ -19,12 +20,15 @@ class HomeView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["most_tracked"] = URLPath.objects.annotate(
-            num_trackings=Count("trackings")
-        ).order_by("-num_trackings")[:5]
+        context["most_tracked"] = (
+            Request.objects.select_related("path")
+            .annotate(num_trackings=Count("trackings"))
+            .order_by("-num_trackings")[:5]
+        )
         context["latest"] = (
-            URLPath.objects.alias(latest_tracking=Max("trackings__started_at"))
+            Request.objects.alias(latest_tracking=Max("trackings__started_at"))
             .order_by("-latest_tracking")
+            .select_related("path")
             .distinct()[:5]
         )
         context["most_accessed_fields"] = (
@@ -34,11 +38,9 @@ class HomeView(TemplateView):
             .order_by("-access_count")
             .select_related("model")[:10]
         )
-        context["slowest"] = (
-            QuerySetTracking.objects.select_related("query")
-            .only("query__cache_key", "average_duration")
-            .order_by("-average_duration")[:5]
-        )
+        context["slowest"] = Query.objects.only(
+            "cache_key", "average_duration"
+        ).order_by("-average_duration")[:5]
         context["most_repeated_queries"] = Query.objects.annotate(
             num_trackings=Count("trackings")
         ).order_by("-num_trackings")[:5]
@@ -57,13 +59,13 @@ class TrackingsView(ListView):
 
 class URLPathTrackingsView(DetailView):
     template_name = "dj_tracker/url_trackings.html"
-    model = URLPath
+    model = Request
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["query_groups"] = (
             QueryGroup.objects.annotate_num_queries()
-            .filter(trackings__url_path_id=self.object.pk)
+            .filter(trackings__request_id=self.object.pk)
             .annotate(
                 num_trackings=Count("trackings"),
                 latest_run_at=Max("trackings__started_at"),
@@ -82,7 +84,7 @@ class QueryGroupView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         pk = self.object.pk
-        context["urls"] = URLPath.objects.filter(
+        context["requests"] = Request.objects.filter(
             trackings__query_group_id=pk
         ).distinct()
 

@@ -27,43 +27,22 @@
                 <p class="card-text font-monospace">{{ object.sql }}</p>
             </div>
             <div class="collapse" id="tb-{{ object.pk }}">
-                <button class="btn btn-secondary"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#stack-top"
-                        aria-expanded="false">
-                    Toggle top
-                </button>
-                <div class="collapse my-2" id="stack-top">
-                    {% for entry in object.traceback.entries.top %}
-                        <p class="bg-secondary text-light p-2">{{ entry.filename }}:{{ entry.lineno }} - {{ entry.func }}</p>
-                        <p class="card-text font-monospace">{{ entry.code }}</p>
-                    {% endfor %}
-                </div>
-                <div class="stack-middle my-2">
-                    {% for entry in object.traceback.entries.middle %}
-                        <p class="bg-secondary text-light p-2">{{ entry.filename }}:{{ entry.lineno }} - {{ entry.func }}</p>
-                        <p class="card-text font-monospace">{{ entry.code }}</p>
-                    {% endfor %}
-                </div>
                 {% if object.traceback.template_info %}
                     <h5>Template Info</h5>
                     <p class="bg-secondary text-light p-2">{{ object.traceback.template_info.filename }}:{{ object.traceback.template_info.lineno }}</p>
                     <p class="card-text font-monospace">{{ object.traceback.template_info.code }}</p>
                 {% endif %}
-                <button class="btn btn-secondary"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#stack-bottom"
-                        aria-expanded="false">
-                    Toggle bottom
-                </button>
-                <div class="collapse my-2" id="stack-bottom">
-                    {% for entry in object.traceback.entries.bottom %}
-                        <p class="bg-secondary text-light p-2">{{ entry.filename }}:{{ entry.lineno }} - {{ entry.func }}</p>
-                        <p class="card-text font-monospace">{{ entry.code }}</p>
-                    {% endfor %}
-                </div>
+                {% with object.traceback.entries as stack_entries %}
+                    {% if stack_entries %}
+                        <div class="stack-middle my-4">
+                            <h5>Stack Info</h5>
+                            {% for entry in stack_entries %}
+                                <p class="bg-secondary text-light p-2">{{ entry.filename }}:{{ entry.lineno }} - {{ entry.func }}</p>
+                                <p class="card-text font-monospace">{{ entry.code }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
             </div>
         </div>
     </div>

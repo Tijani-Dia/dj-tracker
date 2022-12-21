@@ -1,55 +1,65 @@
-from collections import Counter
-from itertools import takewhile
 from linecache import getline
-from sys import _getframe
-from typing import Dict, Optional, Tuple
+from typing import Dict, FrozenSet, Hashable, Optional, Tuple
 
 from django.apps import apps
-from django.db import models
-from django.template import Node
+from django.db.models.base import ModelBase
 
-from dj_tracker.utils import cached_attribute, delay, hash_string, ignore_frame
-
-
-class Promisable(models.Model):
-    """
-    A Promisable is a model whose instances' primary keys (`cache_key`)
-    are deduced from the data they hold.
-    """
-
-    cache_key = models.BigIntegerField(primary_key=True)
-
-    class Meta:
-        abstract = True
+from dj_tracker.models import (
+    InstanceFieldTracking,
+    IterableClass,
+    QuerySetTracking,
+    QueryType,
+    StackEntry,
+)
+from dj_tracker.traceback import TracebackEntry
+from dj_tracker.utils import (
+    HashableCounter,
+    HashableList,
+    LRUBoundedDict,
+    cached_attribute,
+    hash_string,
+)
 
 
 class Promise:
-    # Model to attach to this promise class.
-    model_string = None
     # Promise class(es) this one depends on,
-    # typically via foreign keys on the model they represent.
+    # typically via foreign keys on the model it represents.
     deps = ()
 
     __slots__ = ("cache_key", "creation_kwargs")
 
     @classmethod
-    def __init_subclass__(cls):
-        super().__init_subclass__()
-        # Set of cache keys corresponding to resolved promises/model instances.
-        cls.resolved = set()
+    def __init_subclass__(cls, *, cache_size=512):
+        cls.model = apps.get_model(
+            "dj_tracker", cls.__name__[:-7]  # removesuffix("Promise")
+        )
+        cls.to_resolve = to_resolve = {}
+        cls.resolve_promise = to_resolve.pop
 
-        # Mapping of `cache_key: promise` representing the current
-        # set of promises to resolve.
-        cls.to_resolve = {}
+        get_cache_key = cls.get_cache_key
+        get_in_memory_key = cls.get_in_memory_key
+        set_creation_kwargs = getattr(cls, "set_creation_kwargs", None)
 
-    def __init__(self, cache_key: int, **creation_kwargs):
-        """
-        `cache_key` is used to find existing model instances.
-        When no instance matches the given key, a new one is created
-        using the `creation_kwargs`.
-        """
-        self.cache_key = cache_key
-        self.creation_kwargs = creation_kwargs
+        cache = LRUBoundedDict(maxsize=cache_size)
+        get_cached = cache.get
+
+        def get_or_create(**kwargs):
+            in_memory_key = get_in_memory_key(**kwargs)
+            if not (cache_key := get_cached(in_memory_key)):
+                if set_creation_kwargs:
+                    set_creation_kwargs(kwargs)
+                if (cache_key := get_cache_key(**kwargs)) not in to_resolve:
+                    to_resolve[cache_key] = cls(cache_key, kwargs)
+
+                cache[in_memory_key] = cache_key
+
+            return cache_key
+
+        cls.get_or_create = get_or_create
+
+    @staticmethod
+    def get_in_memory_key(**kwargs) -> Hashable:
+        raise NotImplementedError
 
     @staticmethod
     def get_cache_key(**kwargs) -> int:
@@ -60,73 +70,51 @@ class Promise:
         """
         raise NotImplementedError
 
+    def __init__(self, cache_key: int, creation_kwargs: Dict):
+        """
+        `cache_key` is used to find existing model instances.
+        When no instance matches the given key, a new one is created
+        using the `creation_kwargs`.
+        """
+        self.cache_key = cache_key
+        self.creation_kwargs = creation_kwargs
+
     @classmethod
-    def get_or_create(cls, **kwargs) -> int:
+    def obj_created(cls, cache_key: int):
         """
-        This is similar to Model.get_ot_create but returns the `cache_key`
-        (which is the `pk`) matching the potential instance without doing a database query.
-        Later, the `resolve` method of `cls` must be called to actually
-        get or/and create the corresponding instances in bulk.
+        Hook run when an object with the given `cache_key` is created
         """
-        if (
-            cache_key := cls.get_cache_key(**kwargs)
-        ) not in cls.resolved and cache_key not in cls.to_resolve:
-            cls.to_resolve[cache_key] = cls(cache_key, **kwargs)
-        return cache_key
-
-    @cached_attribute
-    def model(cls):
-        """Model this promise class is attached to."""
-        return apps.get_model(cls.model_string)
-
-    @cached_attribute
-    def base_queryset(cls):
-        return cls.model.objects.all()
+        # Remove and return the corresponding promise from `to_resolve`.
+        return cls.resolve_promise(cache_key)
 
     @cached_attribute
     def queryset(cls):
-        return cls.base_queryset.only("cache_key").values_list("cache_key", flat=True)
+        return cls.model.objects.only("cache_key").values_list("cache_key", flat=True)
 
     @classmethod
-    def obj_found(cls, cache_key):
-        """
-        Hook run when an object with the given `cache_key` is found in the database.
-        """
-        # Add the `cache_key` to `resolved`.
-        cls.resolved.add(cache_key)
-        # Remove and return the corresponding promise from `to_resolve`.
-        return cls.to_resolve.pop(cache_key)
-
-    # Hook run when an object with a given `cache_key` is created.
-    obj_created = obj_found
-
-    @classmethod
-    @delay
     def resolve_existing(cls, to_resolve):
         """
         Finds all existing objects with primary keys matching the ones in `to_resolve`
         and resolves the corresponding promises.
         """
-        obj_found = cls.obj_found
+        resolve_promise = cls.resolve_promise
         for cache_key in cls.queryset.filter(cache_key__in=to_resolve).iterator():
-            obj_found(cache_key)
             del to_resolve[cache_key]
+            resolve_promise(cache_key)
 
     @classmethod
-    @delay
     def resolve_new(cls, to_resolve):
         """
         Creates new model instances for the promises in `to_resolve`.
         """
         Model = cls.model
-        created = cls.base_queryset.bulk_create(
+        obj_created = cls.obj_created
+        Model.objects.bulk_create(
             Model(cache_key=cache_key, **promise.creation_kwargs)
             for cache_key, promise in to_resolve.items()
         )
-
-        obj_created = cls.obj_created
-        for obj in created:
-            obj_created(obj.cache_key)
+        for cache_key in to_resolve:
+            obj_created(cache_key)
 
     @classmethod
     def resolve(cls):
@@ -152,9 +140,15 @@ class Promise:
 
 
 class ModelPromise(Promise):
-    model_string = "dj_tracker.Model"
-
     __slots__ = ()
+
+    @staticmethod
+    def get_in_memory_key(*, model: ModelBase) -> ModelBase:
+        return model
+
+    @staticmethod
+    def set_creation_kwargs(kwargs):
+        kwargs["label"] = kwargs.pop("model")._meta.label
 
     @staticmethod
     def get_cache_key(*, label: str) -> int:
@@ -162,10 +156,17 @@ class ModelPromise(Promise):
 
 
 class FieldPromise(Promise):
-    model_string = "dj_tracker.Field"
     deps = (ModelPromise,)
 
     __slots__ = ()
+
+    @staticmethod
+    def get_in_memory_key(*, model: ModelBase, name: str) -> str:
+        return f"{model.__name__}{name}"
+
+    @staticmethod
+    def set_creation_kwargs(kwargs):
+        kwargs["model_id"] = ModelPromise.get_or_create(model=kwargs.pop("model"))
 
     @staticmethod
     def get_cache_key(*, model_id: int, name: str) -> int:
@@ -173,9 +174,11 @@ class FieldPromise(Promise):
 
 
 class SQLPromise(Promise):
-    model_string = "dj_tracker.SQL"
-
     __slots__ = ()
+
+    @staticmethod
+    def get_in_memory_key(*, sql: str) -> str:
+        return sql
 
     @staticmethod
     def get_cache_key(*, sql: str) -> int:
@@ -183,9 +186,11 @@ class SQLPromise(Promise):
 
 
 class URLPathPromise(Promise):
-    model_string = "dj_tracker.URLPath"
-
     __slots__ = ()
+
+    @staticmethod
+    def get_in_memory_key(*, path: str) -> str:
+        return path
 
     @staticmethod
     def get_cache_key(*, path: str) -> int:
@@ -193,10 +198,19 @@ class URLPathPromise(Promise):
 
 
 class RequestPromise(Promise):
-    model_string = "dj_tracker.Request"
     deps = (URLPathPromise,)
 
     __slots__ = ()
+
+    @staticmethod
+    def get_in_memory_key(
+        *, path: str, method: str, content_type: str, query_string: str
+    ) -> str:
+        return f"{path}{method}{content_type}{query_string}"
+
+    @staticmethod
+    def set_creation_kwargs(kwargs):
+        kwargs["path_id"] = URLPathPromise.get_or_create(path=kwargs.pop("path"))
 
     @staticmethod
     def get_cache_key(
@@ -211,17 +225,13 @@ class RequestPromise(Promise):
             )
         )
 
-    @classmethod
-    def get_or_create(cls, *, path, **kwargs):
-        return super().get_or_create(
-            path_id=URLPathPromise.get_or_create(path=path), **kwargs
-        )
-
 
 class SourceFilePromise(Promise):
-    model_string = "dj_tracker.SourceFile"
-
     __slots__ = ()
+
+    @staticmethod
+    def get_in_memory_key(*, name: str) -> str:
+        return name
 
     @staticmethod
     def get_cache_key(*, name: str) -> int:
@@ -229,10 +239,25 @@ class SourceFilePromise(Promise):
 
 
 class SourceCodePromise(Promise):
-    model_string = "dj_tracker.SourceCode"
     deps = (SourceFilePromise,)
 
     __slots__ = ()
+
+    @staticmethod
+    def get_in_memory_key(*, entry: TracebackEntry) -> int:
+        return entry.hash_value
+
+    @staticmethod
+    def set_creation_kwargs(kwargs):
+        entry = kwargs.pop("entry")
+        filename = entry.filename
+        lineno = entry.lineno
+        kwargs.update(
+            filename_id=SourceFilePromise.get_or_create(name=filename),
+            lineno=lineno,
+            func=entry.func,
+            code=getline(filename, lineno).strip(),
+        )
 
     @staticmethod
     def get_cache_key(
@@ -240,43 +265,51 @@ class SourceCodePromise(Promise):
     ) -> int:
         return hash((filename_id, lineno, hash_string(code), hash_string(func)))
 
-    @classmethod
-    def get_or_create(cls, *, filename: str, lineno: int, func: str = "") -> int:
-        return super().get_or_create(
-            filename_id=SourceFilePromise.get_or_create(name=filename),
-            lineno=lineno,
-            code=getline(filename, lineno),
-            func=func,
-        )
 
-
-class StackPromise(Promise):
-    model_string = "dj_tracker.Stack"
+class TracebackPromise(Promise):
     deps = (SourceCodePromise,)
 
     stack_entries = []
 
-    __slots__ = "entries"
-
-    def __init__(self, cache_key: int, *, entries):
-        super().__init__(cache_key)
-        self.entries = entries
+    __slots__ = "stack"
 
     @staticmethod
-    def get_cache_key(*, entries) -> int:
-        return hash(entries)
+    def get_in_memory_key(
+        *, stack: HashableList, template_info: Optional[TracebackEntry]
+    ) -> int:
+        return (
+            stack.hash_value
+            if not template_info
+            else hash((stack.hash_value, template_info.hash_value))
+        )
+
+    @staticmethod
+    def set_creation_kwargs(kwargs):
+        get_or_create_source_code = SourceCodePromise.get_or_create
+        kwargs["stack"] = tuple(
+            get_or_create_source_code(entry=entry)
+            for entry in reversed(kwargs["stack"])
+        )
+        if template_info := kwargs.pop("template_info"):
+            kwargs["template_info_id"] = get_or_create_source_code(entry=template_info)
+
+    @staticmethod
+    def get_cache_key(*, stack: Tuple, template_info_id: Optional[int] = None):
+        return hash((stack, template_info_id)) if template_info_id else hash(stack)
+
+    def __init__(self, cache_key, creation_kwargs):
+        self.stack = creation_kwargs.pop("stack")
+        super().__init__(cache_key, creation_kwargs)
 
     @classmethod
-    def obj_created(cls, cache_key: int) -> "StackPromise":
+    def obj_created(cls, cache_key: int) -> "TracebackPromise":
         """
-        Adds new stack entries for save when a `Stack` instance is created.
+        Adds new stack entries for save when a `Traceback` instance is created.
         """
-        from dj_tracker.models import StackEntry
-
         promise = super().obj_created(cache_key)
         cls.stack_entries.extend(
-            StackEntry(stack_id=cache_key, index=index, source_id=source_code_id)
-            for index, source_code_id in promise.entries
+            StackEntry(traceback_id=cache_key, source_id=source_id, index=index)
+            for index, source_id in enumerate(promise.stack)
         )
         return promise
 
@@ -284,130 +317,83 @@ class StackPromise(Promise):
     def resolve(cls):
         super().resolve()
         if stack_entries := cls.stack_entries:
-            cls.create_stack_entries(stack_entries)
-
-    @classmethod
-    @delay
-    def create_stack_entries(cls, stack_entries):
-        from dj_tracker.models import StackEntry
-
-        StackEntry.objects.bulk_create(stack_entries)
-        stack_entries.clear()
-
-
-class TracebackPromise(Promise):
-    model_string = "dj_tracker.Traceback"
-    deps = (StackPromise,)
-
-    __slots__ = ()
-
-    @staticmethod
-    def get_cache_key(
-        *,
-        top_id: int,
-        middle_id: int,
-        bottom_id: int,
-        template_info_id: Optional[int] = None,
-    ) -> int:
-        return hash(
-            (top_id, middle_id, bottom_id, template_info_id if template_info_id else 0)
-        )
-
-    @classmethod
-    def get(cls, ignore_frames: int = 3) -> int:
-        """
-        Returns the current traceback id.
-        """
-        stack = []
-        frame = _getframe(ignore_frames)
-        template_info = None
-        get_source_code_id = SourceCodePromise.get_or_create
-
-        try:
-            while frame:
-                code = frame.f_code
-                func = code.co_name
-
-                if not template_info and func == "render":
-                    node = frame.f_locals.get("self")
-                    if isinstance(node, Node):
-                        template_info = get_source_code_id(
-                            filename=node.origin.name,
-                            lineno=node.token.lineno,
-                        )
-                        break
-
-                filename = code.co_filename
-                stack.append(
-                    (
-                        get_source_code_id(
-                            func=func,
-                            filename=filename,
-                            lineno=frame.f_lineno,
-                        ),
-                        ignore_frame(filename),
-                    )
-                )
-
-                frame = frame.f_back
-        finally:
-            del frame
-
-        def ignore_entry(entry):
-            return entry[1]
-
-        top_entries = tuple(
-            (i, entry[0]) for i, entry in enumerate(takewhile(ignore_entry, stack))
-        )
-        top_index = len(top_entries)
-        bottom_entries = tuple(
-            entry[0] for entry in takewhile(ignore_entry, reversed(stack[top_index:]))
-        )
-        bottom_entries = tuple(
-            (i, entry) for i, entry in enumerate(reversed(bottom_entries))
-        )
-        middle_entries = tuple(
-            (i, entry[0])
-            for i, entry in enumerate(
-                stack[top_index : len(stack) - len(bottom_entries)]
-            )
-        )
-
-        get_stack_id = StackPromise.get_or_create
-        return cls.get_or_create(
-            top_id=get_stack_id(entries=top_entries),
-            middle_id=get_stack_id(entries=middle_entries),
-            bottom_id=get_stack_id(entries=bottom_entries),
-            template_info_id=template_info,
-        )
+            StackEntry.objects.bulk_create(stack_entries)
+            stack_entries.clear()
 
 
 class FieldTrackingPromise(Promise):
-    model_string = "dj_tracker.FieldTracking"
     deps = (FieldPromise,)
 
     __slots__ = ()
 
     @staticmethod
-    def get_cache_key(*, field_id: int, get_count: int, set_count: int) -> int:
-        return hash((field_id, get_count, set_count))
+    def get_in_memory_key(*, model: ModelBase, field: str, field_tracker) -> int:
+        return hash((model, field, field_tracker))
+
+    @staticmethod
+    def set_creation_kwargs(kwargs):
+        kwargs["field_id"] = FieldPromise.get_or_create(
+            model=kwargs.pop("model"), name=kwargs.pop("field")
+        )
+
+    @staticmethod
+    def get_cache_key(*, field_id: int, field_tracker):
+        return field_id if not field_tracker else hash((field_id, field_tracker))
+
+    def __init__(self, cache_key, creation_kwargs):
+        if field_tracker := creation_kwargs.pop("field_tracker"):
+            creation_kwargs.update(
+                get_count=field_tracker.get, set_count=field_tracker.set
+            )
+        super().__init__(cache_key, creation_kwargs)
 
 
 class InstanceTrackingPromise(Promise):
-    model_string = "dj_tracker.InstanceTracking"
     deps = (FieldTrackingPromise,)
 
     trackings = []
 
     __slots__ = "field_trackings"
 
-    def __init__(self, cache_key: int, *, field_trackings, **kwargs):
-        super().__init__(cache_key, **kwargs)
-        self.field_trackings = field_trackings
+    @staticmethod
+    def get_in_memory_key(
+        *,
+        model: ModelBase,
+        select_related_field: str,
+        field_trackings: HashableCounter,
+    ):
+        return hash((model, select_related_field, field_trackings))
 
     @staticmethod
-    def get_cache_key(*, field_trackings, select_related_field: str) -> int:
-        return hash((field_trackings, hash_string(select_related_field)))
+    def set_creation_kwargs(kwargs):
+        model = kwargs.pop("model")
+        get_field_tracking_id = FieldTrackingPromise.get_or_create
+
+        kwargs["field_trackings"] = frozenset(
+            (
+                get_field_tracking_id(
+                    model=model, field=field, field_tracker=field_tracker
+                ),
+                num_occurrences,
+            )
+            for (field, field_tracker), num_occurrences in kwargs[
+                "field_trackings"
+            ].items()
+        )
+
+    @staticmethod
+    def get_cache_key(
+        field_trackings: FrozenSet[Tuple[int, int]], select_related_field: str
+    ) -> int:
+        return (
+            hash(field_trackings)
+            if not select_related_field
+            else hash((field_trackings, hash_string(select_related_field)))
+        )
+
+    def __init__(self, cache_key, creation_kwargs):
+        self.field_trackings = creation_kwargs.pop("field_trackings")
+        super().__init__(cache_key, creation_kwargs)
 
     @classmethod
     def obj_created(cls, cache_key: int) -> "InstanceTrackingPromise":
@@ -415,8 +401,6 @@ class InstanceTrackingPromise(Promise):
         Adds new instance field trackings for save when
         an `InstanceTracking` instance is created.
         """
-        from dj_tracker.models import InstanceFieldTracking
-
         promise = super().obj_created(cache_key)
 
         cls.trackings.extend(
@@ -432,155 +416,210 @@ class InstanceTrackingPromise(Promise):
     @classmethod
     def resolve(cls):
         super().resolve()
-        if cls.trackings:
-            cls.create_instance_field_trackings()
-
-    @classmethod
-    @delay
-    def create_instance_field_trackings(cls):
-        from dj_tracker.models import InstanceFieldTracking
-
-        InstanceFieldTracking.objects.bulk_create(cls.trackings)
-        cls.trackings.clear()
+        if trackings := cls.trackings:
+            InstanceFieldTracking.objects.bulk_create(trackings)
+            trackings.clear()
 
 
 class QueryPromise(Promise):
-    model_string = "dj_tracker.Query"
     deps = (TracebackPromise, SQLPromise, ModelPromise, InstanceTrackingPromise)
 
     trackings = []
+    durations = {}
 
     __slots__ = "instance_trackings"
 
-    def __init__(self, cache_key: int, *, instance_trackings, **kwargs):
-        super().__init__(cache_key, **kwargs)
-        self.instance_trackings = instance_trackings
-
     @staticmethod
-    def get_cache_key(
+    def get_in_memory_key(
         *,
-        depth: int,
-        query_type: str,
-        cache_hits: Optional[int],
+        sql: str,
+        model: ModelBase,
         num_instances: int,
-        iterable_class: Optional[str],
-        instance_trackings: Tuple,
-        attributes_accessed: Optional[Dict[str, int]],
-        len_calls: int,
-        exists_calls: int,
-        contains_calls: int,
-        sql_id: int,
-        model_id: int,
-        traceback_id: int,
-        field_id: Optional[int],
-        related_queryset_id: Optional[int],
+        query_type: QueryType,
+        iterable_class: IterableClass,
+        attributes_accessed: Optional[HashableCounter],
+        traceback: Tuple[HashableList, Optional["TracebackEntry"]],
+        depth: Optional[int] = None,
+        cache_hits: Optional[int] = None,
+        len_calls: Optional[int] = None,
+        exists_calls: Optional[int] = None,
+        contains_calls: Optional[int] = None,
+        field: Optional[Tuple[ModelBase, str]] = None,
+        instance_trackings: Optional[FrozenSet] = None,
+        related_queryset_id: Optional[int] = None,
     ) -> int:
         return hash(
             (
                 depth,
-                hash_string(query_type),
-                cache_hits if cache_hits is not None else 0,
+                query_type,
+                cache_hits,
                 num_instances,
-                hash_string(iterable_class) if iterable_class else 0,
+                iterable_class,
                 instance_trackings,
-                tuple(
-                    (hash_string(attr), count)
-                    for attr, count in attributes_accessed.items()
-                )
-                if attributes_accessed
-                else 0,
+                attributes_accessed,
                 len_calls,
                 exists_calls,
                 contains_calls,
+                sql,
+                field,
+                model,
+                traceback,
+                related_queryset_id,
+            )
+        )
+
+    @staticmethod
+    def set_creation_kwargs(kwargs):
+        stack, template_info = kwargs.pop("traceback")
+        kwargs.update(
+            sql_id=SQLPromise.get_or_create(sql=kwargs.pop("sql")),
+            model_id=ModelPromise.get_or_create(model=kwargs.pop("model")),
+            traceback_id=TracebackPromise.get_or_create(
+                stack=stack, template_info=template_info
+            ),
+        )
+        if related_field := kwargs.pop("field", None):
+            kwargs["field_id"] = FieldPromise.get_or_create(
+                model=related_field[0], name=related_field[1]
+            )
+        if instance_trackings := kwargs.get("instance_trackings"):
+            get_instance_tracking_id = InstanceTrackingPromise.get_or_create
+            kwargs["instance_trackings"] = frozenset(
+                get_instance_tracking_id(
+                    model=model,
+                    field_trackings=field_trackings,
+                    select_related_field=select_related_field,
+                )
+                for model, select_related_field, field_trackings in instance_trackings
+            )
+
+    @staticmethod
+    def get_cache_key(
+        *,
+        query_type: str,
+        num_instances: int,
+        iterable_class: Optional[str],
+        attributes_accessed: Optional[HashableCounter],
+        sql_id: int,
+        model_id: int,
+        traceback_id: int,
+        depth: Optional[int] = None,
+        cache_hits: Optional[int] = None,
+        field_id: Optional[int] = None,
+        len_calls: Optional[int] = None,
+        exists_calls: Optional[int] = None,
+        contains_calls: Optional[int] = None,
+        instance_trackings: Optional[FrozenSet] = None,
+        related_queryset_id: Optional[int] = None,
+    ) -> int:
+        return hash(
+            (
                 sql_id,
-                field_id if field_id else 0,
                 model_id,
                 traceback_id,
+                num_instances,
+                hash_string(query_type),
+                hash_string(iterable_class) if iterable_class else 0,
+                depth if depth else 0,
+                field_id if field_id else 0,
+                cache_hits if cache_hits else 0,
+                len_calls if len_calls else 0,
+                exists_calls if exists_calls else 0,
+                contains_calls if contains_calls else 0,
+                instance_trackings if instance_trackings else 0,
+                hash(
+                    frozenset(
+                        (hash_string(attr), count)
+                        for attr, count in attributes_accessed.items()
+                    )
+                )
+                if attributes_accessed
+                else 0,
                 related_queryset_id if related_queryset_id else 0,
             )
         )
 
+    def __init__(self, cache_key, creation_kwargs):
+        if instance_trackings := creation_kwargs.pop("instance_trackings", None):
+            self.instance_trackings = instance_trackings
+        super().__init__(cache_key, creation_kwargs)
+
     @classmethod
     def obj_created(cls, cache_key: int) -> "QueryPromise":
         promise = super().obj_created(cache_key)
-        InstanceTracking = cls.model.instance_trackings.through
-        cls.trackings.extend(
-            InstanceTracking(
-                query_id=cache_key,
-                instancetracking_id=instance_tracking_id,
+        if instance_trackings := getattr(promise, "instance_trackings", None):
+            InstanceTracking = cls.model.instance_trackings.through
+            cls.trackings.extend(
+                InstanceTracking(
+                    query_id=cache_key,
+                    instancetracking_id=instance_tracking_id,
+                )
+                for instance_tracking_id in instance_trackings
             )
-            for instance_tracking_id in promise.instance_trackings
-        )
         return promise
 
     @classmethod
     def resolve(cls):
         super().resolve()
         if trackings := cls.trackings:
-            cls.create_instance_trackings(trackings)
+            cls.model.instance_trackings.through.objects.bulk_create(trackings)
+            trackings.clear()
+
+        if cls.durations:
+            cls.update_durations()
 
     @classmethod
-    @delay
-    def create_instance_trackings(cls, trackings):
-        cls.model.instance_trackings.through.objects.bulk_create(trackings)
-        trackings.clear()
+    def update_duration(cls, cache_key, duration):
+        if not (prev_duration := cls.durations.get(cache_key)):
+            cls.durations[cache_key] = duration
+        else:
+            cls.durations[cache_key] = prev_duration + duration / 2
+
+    @classmethod
+    def update_durations(cls):
+        Manager = cls.model.objects
+        to_update = Manager.filter(pk__in=tuple(cls.durations)).only(
+            "cache_key", "average_duration"
+        )
+        pop_average_duration = cls.durations.pop
+        for query in to_update:
+            avg_duration = pop_average_duration(query.cache_key)
+            if prev_duration := query.average_duration:
+                query.average_duration = prev_duration + avg_duration / 2
+            else:
+                query.average_duration = avg_duration
+
+        Manager.bulk_update(to_update, fields=["average_duration"])
 
 
-class QueryGroupPromise(Promise):
-    model_string = "dj_tracker.QueryGroup"
-
+class QueryGroupPromise(Promise, cache_size=128):
     trackings = []
-    to_update = set()
-    durations = {}
 
     __slots__ = "queries"
 
-    def __init__(self, cache_key: int, *, queries):
-        super().__init__(cache_key)
-        self.queries = queries
+    @staticmethod
+    def get_in_memory_key(*, queries) -> int:
+        return queries.hash_value
 
-    def get_cache_key(*, queries) -> int:
-        return hash(queries)
+    get_cache_key = get_in_memory_key
 
-    @classmethod
-    def get_or_create(cls, *, queries):
-        cache_key = super().get_or_create(
-            queries=tuple(sorted(Counter(query_id for query_id, _ in queries).items()))
-        )
-
-        if not (prev_durations := cls.durations.get(cache_key)):
-            prev_durations = cls.durations[cache_key] = {}
-
-        for query_id, duration in queries:
-            if query_id in prev_durations:
-                prev_durations[query_id] = prev_durations[query_id] + duration / 2
-            else:
-                prev_durations[query_id] = duration
-
-        return cache_key
-
-    @classmethod
-    def obj_found(cls, cache_key: int) -> "QueryGroupPromise":
-        cls.to_update.add(cache_key)
-        return super().obj_found(cache_key)
+    def __init__(self, cache_key, creation_kwargs):
+        self.queries = creation_kwargs.pop("queries")
+        super().__init__(cache_key, creation_kwargs)
 
     @classmethod
     def obj_created(cls, cache_key: int) -> "QueryGroupPromise":
         """
         Adds new queryset trackings for save when a `QueryGroup` instance is created.
         """
-        from dj_tracker.models import QuerySetTracking
-
         promise = super().obj_created(cache_key)
-        durations = cls.durations[cache_key]
         cls.trackings.extend(
             QuerySetTracking(
                 query_id=query_id,
                 query_group_id=cache_key,
                 num_occurrences=num_occurrences,
-                average_duration=durations[query_id],
             )
-            for query_id, num_occurrences in promise.queries
+            for query_id, num_occurrences in promise.queries.items()
         )
         return promise
 
@@ -588,31 +627,5 @@ class QueryGroupPromise(Promise):
     def resolve(cls):
         super().resolve()
         if trackings := cls.trackings:
-            cls.create_trackings(trackings)
-
-        if to_update := cls.to_update:
-            cls.update_durations(to_update)
-
-    @classmethod
-    @delay
-    def create_trackings(cls, trackings):
-        from dj_tracker.models import QuerySetTracking
-
-        QuerySetTracking.objects.bulk_create(trackings)
-        trackings.clear()
-
-    @classmethod
-    @delay
-    def update_durations(cls, to_update):
-        from dj_tracker.models import QuerySetTracking
-
-        durations = cls.durations
-        objs = QuerySetTracking.objects.filter(query_group_id__in=to_update)
-        for qs_tracking in objs:
-            qs_tracking.average_duration = (
-                qs_tracking.average_duration
-                + durations[qs_tracking.query_group_id][qs_tracking.query_id] / 2
-            )
-
-        QuerySetTracking.objects.bulk_update(objs, fields=["average_duration"])
-        to_update.clear()
+            QuerySetTracking.objects.bulk_create(trackings)
+            trackings.clear()

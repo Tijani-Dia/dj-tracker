@@ -1,35 +1,30 @@
 import collections.abc
 import functools
-from collections import Counter, defaultdict
-from datetime import timedelta
+import uuid
+import weakref
+from collections import Counter, defaultdict, deque
 from itertools import chain
-from weakref import finalize as weakref_finalize
-from weakref import ref as weak_reference
 
-from django.db import models
-from django.http import HttpRequest
+from django.db import transaction
 from django.utils.timezone import now
 
 from dj_tracker.collector import Collector
-from dj_tracker.constants import DUMMY_REQUEST
+from dj_tracker.constants import DUMMY_REQUEST, TRACKINGS_DB
 from dj_tracker.context import get_request
-from dj_tracker.promise import (
-    FieldPromise,
-    FieldTrackingPromise,
-    InstanceTrackingPromise,
-    ModelPromise,
-    QueryPromise,
-    SQLPromise,
-    TracebackPromise,
-)
-from dj_tracker.utils import get_sql_from_query
+from dj_tracker.models import QueryGroup, QuerySetTracking, Tracking
+from dj_tracker.promise import QueryGroupPromise, QueryPromise, RequestPromise
+from dj_tracker.traceback import get_traceback
+from dj_tracker.utils import HashableCounter, HashableMixin, cached_attribute
+
+weak_reference = weakref.ref
+weakref_finalize = weakref.finalize
 
 
 class TrackedObject:
     __slots__ = ("tracked", "_tracker", "__weakref__")
 
-    def __init__(self, initial, tracker):
-        self.tracked = initial
+    def __init__(self, obj, tracker):
+        self.tracked = obj
         self._tracker = tracker
 
     def __len__(self):
@@ -48,7 +43,7 @@ class TrackedDict(TrackedObject, collections.abc.MutableMapping):
         except KeyError:
             raise
         else:
-            self._tracker[name].get += 1
+            self._tracker.get_field_tracker(name).get += 1
             return value
 
     def __setitem__(self, key, value):
@@ -71,14 +66,14 @@ class TrackedSequence(TrackedObject, collections.abc.Sequence):
             raise
         else:
             if type(index) is int:
-                self._tracker[str(index)].get += 1
+                self._tracker.get_field_tracker(str(index)).get += 1
             else:
                 for i in range(
                     index.start if index.start is not None else 0,
                     index.stop if index.stop is not None else len(self.tracked),
                     index.step if index.step else 1,
                 ):
-                    self._tracker[str(i)].get += 1
+                    self._tracker.get_field_tracker(str(i)).get += 1
             return value
 
     def __eq__(self, other):
@@ -91,49 +86,67 @@ class TrackedSequence(TrackedObject, collections.abc.Sequence):
 class TrackedResultCache(TrackedObject, collections.abc.Sequence):
     __slots__ = ()
 
-    def __init__(self, initial, tracker):
-        super().__init__(initial, tracker)
+    def __init__(self, obj, tracker):
+        super().__init__(obj, tracker)
         weakref_finalize(self, self._tracker.result_cache_collected)
 
     def __getitem__(self, index):
         return self.tracked.__getitem__(index)
 
     def __len__(self):
-        self._tracker.len_calls += 1
+        self._tracker["len_calls"] = self._tracker.get("len_calls", 0) + 1
         return len(self.tracked)
 
     def __contains__(self, value):
-        self._tracker.contains_calls += 1
+        self._tracker["contains_calls"] = self._tracker.get("contains_calls", 0) + 1
         return value in self.tracked
 
     def __bool__(self):
-        self._tracker.exists_calls += 1
+        self._tracker["exists_calls"] = self._tracker.get("exists_calls", 0) + 1
         return bool(self.tracked)
 
 
-class FieldTracker:
-    __slots__ = ("get", "set")
+@functools.total_ordering
+class FieldTracker(HashableMixin):
+    __slots__ = ("get", "set", "hash_value")
 
-    def __init__(self, get=0, set=0):
-        self.get = get
-        self.set = set
+    def __init__(self):
+        self.get = self.set = 0
 
-    def __hash__(self):
+    def hash(self):
         return hash((self.get, self.set))
 
-    def __eq__(self, other):
-        return (
-            type(other) is FieldTracker
-            and self.get == other.get
-            and self.set == other.set
-        )
+    __hash__ = HashableMixin.__hash__
 
-    def __repr__(self):
-        return f"FieldTracker(get={self.get}, set={self.set})"
+    def __eq__(self, other):
+        if type(other) is FieldTracker:
+            return self.get == other.get and self.set == other.set
+        return NotImplemented
+
+    def __lt__(self, other):
+        if type(other) is FieldTracker:
+            return (self.get, self.set) < (other.get, other.set)
+        elif not other:
+            return False
+        return NotImplemented
 
 
 class InstanceTracker(dict):
     __slots__ = ("queryset", "object", "related")
+
+    def __missing__(self, field):
+        return
+
+    def __getitem__(
+        self, field, dict_get_item=dict.__getitem__, dict_set_item=dict.__setitem__
+    ):
+        if not (field_tracker := dict_get_item(self, field)):
+            field_tracker = FieldTracker()
+            dict_set_item(self, field, field_tracker)
+
+        return field_tracker
+
+    get_field_tracker = __getitem__
 
     def __getstate__(self):
         return {
@@ -148,9 +161,16 @@ class InstanceTracker(dict):
         self.object = weak_reference(state["object"]) if state["object"] else None
 
     def add_related_instance(self, instance, field, related_model):
-        if not (related := getattr(self, "related", None)):
+        self.related[(field, related_model)].append(instance)
+
+    def __getattr__(self, name):
+        if name == "related":
             self.related = related = defaultdict(list)
-        related[(field, related_model)].append(instance)
+            return related
+        raise AttributeError
+
+
+new_instance_tracker = InstanceTracker.fromkeys
 
 
 class RequestTracker:
@@ -162,7 +182,8 @@ class RequestTracker:
         "started_at",
         "queries",
         "num_queries",
-        "collected",
+        "num_queries_saved",
+        "finished",
     )
 
     def __init__(self, request):
@@ -171,116 +192,191 @@ class RequestTracker:
         self.content_type = request.content_type
         self.query_string = request.META.get("QUERY_STRING", "")
         self.started_at = now()
-        self.queries = []
-        self.num_queries = 0
-        self.collected = False
-        weakref_finalize(request, self.request_collected)
+        self.queries = HashableCounter()
+        self.num_queries = self.num_queries_saved = 0
+        self.finished = False
         Collector.add_request(self)
 
-    def add_query(self, query_id, duration):
-        self.queries.append((query_id, duration))
+    def add_query(self, query_id):
+        self.queries[query_id] += 1
+        self.num_queries_saved += 1
         if self.ready:
             Collector.request_ready(self)
 
-    def request_collected(self):
-        self.collected = True
+    def request_finished(self):
+        self.finished = True
         if self.ready:
             Collector.request_ready(self)
 
     @property
     def ready(self):
-        return self.num_queries == len(self.queries) and self.collected
+        return self.finished and self.num_queries == self.num_queries_saved
+
+    @classmethod
+    def save_trackers(cls, trackers):
+        get_or_create_request = RequestPromise.get_or_create
+        get_or_create_query_group = QueryGroupPromise.get_or_create
+
+        trackings = tuple(
+            Tracking(
+                started_at=tracker.started_at,
+                request_id=get_or_create_request(
+                    path=tracker.path,
+                    method=tracker.method,
+                    content_type=tracker.content_type,
+                    query_string=tracker.query_string,
+                ),
+                query_group_id=get_or_create_query_group(queries=tracker.queries),
+            )
+            for tracker in trackers
+        )
+
+        RequestPromise.resolve()
+        QueryGroupPromise.resolve()
+        return len(Tracking.objects.bulk_create(trackings))
 
 
-class QuerySetTracker:
-    promise_kwargs = (
-        "depth",
-        "query_type",
-        "cache_hits",
-        "num_instances",
-        "iterable_class",
-        "instance_trackings",
-        "attributes_accessed",
-        "len_calls",
-        "exists_calls",
-        "contains_calls",
-        "sql_id",
-        "field_id",
-        "model_id",
-        "traceback_id",
-        "related_queryset_id",
-    )
+class DummyRequestTracker:
+    queries = Counter()
 
-    __slots__ = promise_kwargs + (
+    @classmethod
+    def add_query(cls, query_id):
+        cls.queries[query_id] += 1
+
+    @cached_attribute
+    def query_group_id(cls):
+        started_at = now()
+        pk = hash(uuid.uuid1().int)
+
+        with transaction.atomic(using=TRACKINGS_DB):
+            request_id = RequestPromise.get_or_create(
+                path="",
+                method="",
+                content_type="",
+                query_string="",
+            )
+            RequestPromise.resolve()
+            QueryGroup.objects.create(cache_key=pk)
+            Tracking.objects.create(
+                started_at=started_at, query_group_id=pk, request_id=request_id
+            )
+
+        return pk
+
+    @classmethod
+    def save_queries(cls):
+        if not (queries := cls.queries):
+            return
+
+        queries = set(queries)
+        pop_num_occurrences = cls.queries.pop
+        query_group_id = cls.query_group_id
+
+        saved = QuerySetTracking.objects.filter(
+            query_group_id=query_group_id, query_id__in=queries
+        )
+        for obj in saved:
+            obj.num_occurrences += pop_num_occurrences(obj.query_id)
+            queries.remove(obj.query_id)
+        if saved:
+            QuerySetTracking.objects.bulk_update(saved, fields=["num_occurrences"])
+
+        if queries:
+            QueryPromise.resolve()
+            QuerySetTracking.objects.bulk_create(
+                QuerySetTracking(
+                    query_id=query_id,
+                    query_group_id=query_group_id,
+                    num_occurrences=pop_num_occurrences(query_id),
+                )
+                for query_id in queries
+            )
+
+
+class QuerySetTracker(dict):
+    constructors = {
+        "related_querysets": list,
+        "deferred_fields": lambda: defaultdict(set),
+        "instance_trackers": lambda: defaultdict(list),
+    }
+
+    __slots__ = (
         "duration",
         "num_ready",
         "num_trackers",
         "request_tracker",
-        "deferred_fields",
-        "related_querysets",
-        "instance_trackers",
+        "related_queryset",
         "_iter_done",
-        "_attributes_accessed",
         "_result_cache_collected",
+        "constructed",
+        *constructors,
     )
+
+    def __getattr__(self, name):
+        if constructor := self.constructors.get(name):
+            value = constructor()
+            setattr(self, name, value)
+            self.constructed.add(name)
+            return value
+        raise AttributeError
 
     def __init__(
         self,
         queryset,
         query_type,
-        check_accessed_instances=False,
-        result_cache_collected=False,
+        *,
         iterable_class="",
+        track_attributes_accessed=False,
     ):
-        self.traceback_id = TracebackPromise.get()
-        self.model_id = ModelPromise.get_or_create(label=queryset.model._meta.label)
-        self.field_id = self.related_queryset_id = None
-        self.request_tracker = get_tracker(get_request())
-        self.query_type = query_type
-        self.iterable_class = iterable_class
-        self._result_cache_collected = result_cache_collected
-        if check_accessed_instances:
-            self._attributes_accessed = Counter()
-
-        self._iter_done = False
-        self.cache_hits = None
-        self.depth = 0
-        self.len_calls = self.exists_calls = self.contains_calls = 0
-        self.num_instances = self.num_trackers = self.num_ready = 0
-        self.related_querysets = []
-        self.instance_trackers = defaultdict(list)
-        self.deferred_fields = defaultdict(set)
+        super().__init__()
+        self.update(
+            sql="",
+            num_instances=0,
+            model=queryset.model,
+            query_type=query_type,
+            traceback=get_traceback(),
+            iterable_class=iterable_class,
+            attributes_accessed=HashableCounter()
+            if track_attributes_accessed
+            else None,
+        )
+        self.constructed = set()
+        self.related_queryset = None
+        self.num_trackers = self.num_ready = 0
+        self._iter_done = self._result_cache_collected = False
 
         if (instance := queryset._hints.get("instance")) and (
             instance_tracker := getattr(instance, "_tracker", None)
         ):
             instance_tracker.queryset.add_related_queryset(self)
             if field := queryset._hints.get("field"):
-                self.set_field(field, type(instance))
+                self["field"] = type(instance), field
+
+        if (request := get_request()) is not DUMMY_REQUEST:
+            self.request_tracker = get_request_tracker(request)
+        else:
+            self.request_tracker = DummyRequestTracker
 
         queryset._tracker = self
 
     def add_related_queryset(self, qs_tracker):
         self.related_querysets.append(qs_tracker)
-        qs_tracker.related_queryset_id = self
-        qs_tracker.depth = self.depth + 1
+        qs_tracker.related_queryset = self
+        qs_tracker["depth"] = self.get("depth", 0) + 1
 
     def add_deferred_field(self, field, instance):
         self.deferred_fields[field].add(instance)
 
-    def set_field(self, field, model):
-        self.field_id = FieldPromise.get_or_create(
-            model_id=ModelPromise.get_or_create(label=model._meta.label), name=field
-        )
-
     def track_instance(self, instance, model, field=""):
-        instance, tracker = get_tracker(instance)
-        if not tracker:
-            return instance
+        if not (getter := INSTANCE_TRACKER_GETTERS.get(type(instance))):
+            tracker = instance._tracker
+            tracker.object = weak_reference(instance)
+        else:
+            instance, tracker = getter(instance)
 
-        tracker.queryset = self
         self.instance_trackers[(field, model)].append(tracker)
         self.num_trackers += 1
+        tracker.queryset = self
         weakref_finalize(instance, self.instance_tracker_ready)
 
         if related := getattr(tracker, "related", None):
@@ -318,15 +414,13 @@ class QuerySetTracker:
             Collector.tracker_ready(self)
 
     def iter_done(self, queryset, duration):
-        self.sql_id = SQLPromise.get_or_create(sql=get_sql_from_query(queryset.query))
-        self.duration = timedelta(microseconds=duration * 10e-3)
+        self.duration = duration
         self._iter_done = True
 
-        if not (related_qs := self.related_queryset_id):
+        if not (related_qs := self.related_queryset):
             Collector.add_tracker(self)
-        elif self.num_instances == 1 and (
-            deferred_fields := related_qs.deferred_fields
-        ):
+        elif self["num_instances"] == 1 and "deferred_fields" in related_qs.constructed:
+            deferred_fields = related_qs.deferred_fields
             instance = queryset._hints["instance"]
             db_instance = self.instance_trackers[("", queryset.model)][0].object()
             if type(instance) is type(db_instance) and instance.pk == db_instance.pk:
@@ -337,105 +431,66 @@ class QuerySetTracker:
                     len(loaded_fields) == 1
                     and instance in deferred_fields[loaded_fields[0]]
                 ):
-                    self.set_field(loaded_fields[0], queryset.model)
+                    self["field"] = queryset.model, loaded_fields[0]
                     deferred_fields[loaded_fields[0]].remove(instance)
 
-    def _set_extra_attributes(self):
-        all_fields = set()
-        instance_trackings = []
-
-        for (select_related_field, model), trackers in self.instance_trackers.items():
-            fields = {}
-            model_id = ModelPromise.get_or_create(label=model._meta.label)
-
-            for field, field_tracker in chain.from_iterable(
-                tracker.items() for tracker in trackers
-            ):
-                if not (field_data := fields.get(field)):
-                    fields[field] = field_data = (
-                        FieldPromise.get_or_create(model_id=model_id, name=field),
-                        Counter(),
-                    )
-                field_data[1][field_tracker] += 1
-
-            objs = chain.from_iterable(
-                (
-                    (
-                        FieldTrackingPromise.get_or_create(
-                            field_id=field_id,
-                            get_count=field_tracker.get,
-                            set_count=field_tracker.set,
-                        ),
-                        num_occurrences,
-                    )
-                    for field_tracker, num_occurrences in field_trackings.items()
-                )
-                for field_id, field_trackings in fields.values()
-            )
-
-            instance_trackings.append(
-                InstanceTrackingPromise.get_or_create(
-                    field_trackings=tuple(objs),
-                    select_related_field=select_related_field,
-                )
-            )
-            all_fields.update(fields)
-
-        if attributes_accessed := getattr(self, "_attributes_accessed", None):
-            attributes_accessed.pop("_tracker", None)
-            attributes_accessed = {
-                attr: access_count
-                for attr, access_count in attributes_accessed.items()
-                if attr not in all_fields and access_count
-            }
-
-        self.instance_trackings = tuple(instance_trackings)
-        self.attributes_accessed = attributes_accessed
-
     def save(self):
-        self._set_extra_attributes()
-        query_id = QueryPromise.get_or_create(
-            **{attr: getattr(self, attr) for attr in self.promise_kwargs}
-        )
+        if "instance_trackers" in self.constructed:
+            self["instance_trackings"] = frozenset(
+                (
+                    model,
+                    select_related_field,
+                    HashableCounter(
+                        chain.from_iterable(tracker.items() for tracker in trackers)
+                    ),
+                )
+                for (
+                    select_related_field,
+                    model,
+                ), trackers in self.instance_trackers.items()
+            )
 
-        for related_tracker in self.related_querysets:
-            related_tracker.related_queryset_id = query_id
-            Collector.add_tracker(related_tracker)
+        query_id = QueryPromise.get_or_create(**self)
+        QueryPromise.update_duration(query_id, self.duration)
 
-        self.request_tracker.add_query(query_id, self.duration)
-        return query_id
+        if "related_querysets" in self.constructed:
+            for related_tracker in self.related_querysets:
+                related_tracker["related_queryset_id"] = query_id
+                Collector.add_tracker(related_tracker)
+                del related_tracker.related_queryset
 
+        self.request_tracker.add_query(query_id)
 
-@functools.singledispatch
-def get_tracker(instance):
-    return instance, None
+    @classmethod
+    def save_trackers(cls, trackers):
+        deque((tracker.save() for tracker in trackers), maxlen=0)
+        QueryPromise.resolve()
+        return len(trackers)
 
-
-@get_tracker.register(models.Model)
-def _(instance):
-    tracker = instance._tracker
-    tracker.object = weak_reference(instance)
-    return instance, tracker
-
-
-@get_tracker.register(dict)
-def _(instance):
-    tracker = InstanceTracker({field: FieldTracker() for field in instance})
-    return TrackedDict(instance, tracker), tracker
-
-
-@get_tracker.register(tuple)
-@get_tracker.register(list)
-def _(instance):
-    tracker = InstanceTracker({str(i): FieldTracker() for i in range(len(instance))})
-    return TrackedSequence(instance, tracker), tracker
+    def __hash__(self):
+        return id(self)
 
 
-@get_tracker.register(HttpRequest)
-@get_tracker.register(type(DUMMY_REQUEST))
-def _(instance):
-    if not (tracker := getattr(instance, "_tracker", None)):
-        tracker = instance._tracker = RequestTracker(instance)
+def get_request_tracker(request):
+    if not (tracker := getattr(request, "_tracker", None)):
+        tracker = request._tracker = RequestTracker(request)
 
     tracker.num_queries += 1
     return tracker
+
+
+def get_sequence_tracker(sequence):
+    tracker = new_instance_tracker(map(str, range(len(sequence))))
+    return TrackedSequence(sequence, tracker), tracker
+
+
+def get_dict_tracker(d):
+    tracker = new_instance_tracker(d)
+    return TrackedDict(d, tracker), tracker
+
+
+INSTANCE_TRACKER_GETTERS = {
+    dict: get_dict_tracker,
+    list: get_sequence_tracker,
+    tuple: get_sequence_tracker,
+}

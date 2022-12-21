@@ -1,9 +1,15 @@
-from setuptools import find_packages, setup
+from setuptools import Extension, find_packages, setup
 
 __version__ = "0.0.3a"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
+
+ext_modules = [
+    Extension(
+        "dj_tracker.speedups", sources=["src/dj_tracker/speedups.c"], optional=True
+    )
+]
 
 install_requires = [
     "django>=3.2",
@@ -14,6 +20,7 @@ test_requires = [
     "isort",
     "flake8",
     "factory_boy",
+    "autoflake",
 ]
 
 docs_requires = [
@@ -49,6 +56,7 @@ setup(
     },
     package_dir={"": "src"},
     packages=find_packages("src"),
+    ext_modules=ext_modules,
     include_package_data=True,
     zip_safe=False,
     license="BSD-3-Clause",

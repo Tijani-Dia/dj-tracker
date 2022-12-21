@@ -2,8 +2,6 @@ import time
 
 from dj_tracker import constants
 from dj_tracker.logging import logger
-from dj_tracker.promise import QueryGroupPromise, QueryPromise, RequestPromise
-from dj_tracker.utils import delay
 
 
 class Collector:
@@ -51,52 +49,25 @@ class Collector:
             cls.requests_ready.append(request)
 
     @classmethod
-    @delay
     def save_trackers(cls):
-        ready = cls.trackers_ready
-        num_done = num_ready = len(ready)
-        pks = set()
-        add_query_id = pks.add
-        pop_tracker = ready.pop
+        from dj_tracker.datastructures import QuerySetTracker
 
-        while num_ready != 0:
-            add_query_id(pop_tracker(0).save())
-            num_ready -= 1
-
-        QueryPromise.resolve()
-        assert all(pk in QueryPromise.resolved for pk in pks)
-
-        cls.num_trackers_saved += num_done
+        num_saved = QuerySetTracker.save_trackers(cls.trackers_ready[:])
+        cls.trackers_ready[:num_saved] = []
+        cls.num_trackers_saved += num_saved
 
     @classmethod
-    @delay
     def save_requests(cls):
-        from dj_tracker.models import Tracking
+        from dj_tracker.datastructures import RequestTracker
 
-        trackings = tuple(
-            Tracking(
-                started_at=request.started_at,
-                request_id=RequestPromise.get_or_create(
-                    path=request.path,
-                    method=request.method,
-                    content_type=request.content_type,
-                    query_string=request.query_string,
-                ),
-                query_group_id=QueryGroupPromise.get_or_create(queries=request.queries),
-            )
-            for request in cls.requests_ready[:]
-        )
-
-        RequestPromise.resolve()
-        QueryGroupPromise.resolve()
-        delay(Tracking.objects.bulk_create)(trackings)
-
-        len_trackings = len(trackings)
-        cls.requests_ready[:len_trackings] = []
-        cls.num_requests_saved += len_trackings
+        num_saved = RequestTracker.save_trackers(cls.requests_ready[:])
+        cls.requests_ready[:num_saved] = []
+        cls.num_requests_saved += num_saved
 
     @classmethod
     def run(cls):
+        from dj_tracker.datastructures import DummyRequestTracker
+
         save_trackers = cls.save_trackers
         save_requests = cls.save_requests
         ready_trackers = cls.trackers_ready
@@ -114,6 +85,7 @@ class Collector:
                 save_trackers()
             if ready_requests:
                 save_requests()
+            DummyRequestTracker.save_queries()
 
         iter_not_done = 0
         active_trackers = cls.trackers
@@ -129,7 +101,10 @@ class Collector:
         if ready_requests:
             save_requests()
 
+        DummyRequestTracker.save_queries()
+
         assert cls.num_trackers_saved + iter_not_done == cls.num_trackers
         assert cls.num_requests_saved == cls.num_requests
+        assert not DummyRequestTracker.queries
 
         logger.info(f"Collector stopped: {cls.num_trackers_saved} queries tracked.")

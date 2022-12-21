@@ -6,10 +6,10 @@
     </h1>
     <div class="row align-items-center">
         <div class="col">
-            <h4 class="h4">URLs</h4>
+            <h4 class="h4">Requests</h4>
             <ul class="list">
-                {% for url in urls %}
-                    <li class="list-item">{{ url }}</li>
+                {% for request in requests %}
+                    <li class="list-item">{{ request.path }}</li>
                 {% endfor %}
             </ul>
         </div>

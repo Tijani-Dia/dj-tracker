@@ -11,7 +11,11 @@ urlpatterns = [
         views.QueryGroupView.as_view(),
         name="query-group",
     ),
-    path("<int:pk>/", views.URLPathTrackingsView.as_view(), name="url-trackings"),
+    re_path(
+        r"(?P<pk>(-?)[0-9]+)/",
+        views.URLPathTrackingsView.as_view(),
+        name="url-trackings",
+    ),
     re_path(
         r"queryset/(?P<pk>(-?)[0-9]+)/",
         views.QuerysetTrackingView.as_view(),

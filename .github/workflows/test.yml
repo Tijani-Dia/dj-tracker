@@ -1,4 +1,4 @@
-name: Django Tracker CI
+name: Tests
 
 on:
   push:

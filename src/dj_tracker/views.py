@@ -11,7 +11,6 @@ from dj_tracker.models import (
     QueryGroup,
     QuerySetTracking,
     Request,
-    URLPath,
 )
 
 
@@ -47,13 +46,15 @@ class HomeView(TemplateView):
         return context
 
 
-class TrackingsView(ListView):
-    template_name = "dj_tracker/trackings.html"
+class RequestsView(ListView):
+    template_name = "dj_tracker/requests.html"
     paginate_by = 10
 
     def get_queryset(self):
-        return URLPath.objects.annotate(num_trackings=Count("trackings")).order_by(
-            "-num_trackings"
+        return (
+            Request.objects.select_related("path")
+            .annotate(num_trackings=Count("trackings"))
+            .order_by("-num_trackings")
         )
 
 

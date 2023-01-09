@@ -4,8 +4,8 @@ from dj_tracker import views
 
 urlpatterns = [
     path("", views.HomeView.as_view(), name="trackings"),
-    path("views/", views.TrackingsView.as_view(), name="views"),
-    path("fields/", views.TrackingsView.as_view(), name="fields"),
+    path("requests/", views.RequestsView.as_view(), name="requests"),
+    path("fields/", views.RequestsView.as_view(), name="fields"),
     re_path(
         r"query-group/(?P<pk>(-?)[0-9]+)/",
         views.QueryGroupView.as_view(),

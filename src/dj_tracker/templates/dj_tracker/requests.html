@@ -5,11 +5,11 @@
     <div class="row justify-content-between">
         <div class="col-7">
             <div class="list-group list-group-flush fs-5 my-4">
-                {% for url_path in page_obj %}
-                    <a href="{{ url_path.get_absolute_url }}"
+                {% for request in page_obj %}
+                    <a href="{{ request.get_absolute_url }}"
                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                        <div class="me-auto my-2">{{ url_path }}</div>
-                        <span class="badge bg-primary rounded-pill">{{ url_path.num_trackings }}</span>
+                        <div class="me-auto my-2">{{ request }}</div>
+                        <span class="badge bg-primary rounded-pill">{{ request.num_trackings }}</span>
                     </a>
                 {% empty %}
                     <p>No trackings yet.</p>

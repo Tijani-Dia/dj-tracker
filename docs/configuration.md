@@ -47,7 +47,7 @@ DJ_TRACKER = {
 
 ### `FIELD_DESCRIPTORS`
 
-If your program uses custom field descriptors, you can specify the path to the descriptor to use when tracking fields of that type. It can simply be the built-in [`EditableFieldDescriptor`](https://github.com/Tijani-Dia/django-tracker/blob/main/src/dj_tracker/field_descriptors.py#L71) but can also be any subclass of [`FieldDescriptor`](https://github.com/Tijani-Dia/django-tracker/blob/main/src/dj_tracker/field_descriptors.py#L6) provided that it's a data descriptor (i.e implements the `__set__` method).
+If your program uses custom field descriptors, you can specify the path to the descriptor to use when tracking fields of that type. It can simply be the built-in [`EditableFieldDescriptor`](https://github.com/Tijani-Dia/dj-tracker/blob/main/src/dj_tracker/field_descriptors.py#L71) but can also be any subclass of [`FieldDescriptor`](https://github.com/Tijani-Dia/dj-tracker/blob/main/src/dj_tracker/field_descriptors.py#L6) provided that it's a data descriptor (i.e implements the `__set__` method).
 
 For example, Wagtail defines a [`Creator`](https://github.com/wagtail/wagtail/blob/4246c0b703bccc9aafb6f86524bbbdb55c3c9e1e/wagtail/fields.py#L64) descriptor for its StreamField that can be tracked as follows:
 

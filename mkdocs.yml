@@ -1,7 +1,7 @@
 site_name: Django tracker
-site_url: https://tijani-dia.github.io/django-tracker/
-repo_url: https://github.com/tijani-dia/django-tracker
-repo_name: tijani-dia/django-tracker
+site_url: https://tijani-dia.github.io/dj-tracker/
+repo_url: https://github.com/tijani-dia/dj-tracker
+repo_name: tijani-dia/dj-tracker
 theme:
   name: material
   palette:

@@ -45,6 +45,9 @@ jobs:
         run: |
           pip install -e '.[test]'
           pip install coverage
+      - name: Setup trackings database
+        run: |
+          python manage.py migrate --database=trackings
       - name: Test
         run: |
           coverage run manage.py test
@@ -58,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.10"]
+        python: ["3.11"]
         toxenv: ["black", "isort", "flake8"]
     steps:
       - uses: actions/checkout@v2

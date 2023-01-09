@@ -56,6 +56,7 @@ class TrackedDict(TrackedObject, collections.abc.MutableMapping):
         return iter(self.tracked)
 
 
+@functools.total_ordering
 class TrackedSequence(TrackedObject, collections.abc.Sequence):
     __slots__ = ()
 
@@ -76,8 +77,11 @@ class TrackedSequence(TrackedObject, collections.abc.Sequence):
                     self._tracker.get_field_tracker(str(i)).get += 1
             return value
 
+    def __lt__(self, other):
+        return self.tracked < other
+
     def __eq__(self, other):
-        return other == self.tracked
+        return self.tracked == other
 
     def __hash__(self):
         return hash(self.tracked)

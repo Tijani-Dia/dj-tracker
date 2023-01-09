@@ -1,6 +1,6 @@
 from setuptools import Extension, find_packages, setup
 
-__version__ = "0.1.0a"
+__version__ = "0.1.1a"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -34,7 +34,7 @@ build_requires = [
 ]
 
 setup(
-    name="dj-tracker",
+    name="django-trackings",
     version=__version__,
     description="A Django app that tracks your queries and helps optimizing them.",
     long_description=long_description,

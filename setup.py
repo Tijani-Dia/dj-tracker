@@ -34,9 +34,9 @@ build_requires = [
 ]
 
 setup(
-    name="django-trackings",
+    name="dj-tracker",
     version=__version__,
-    description="Track your Django models.",
+    description="A Django app that tracks your queries and helps optimizing them.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Tidiane Dia",

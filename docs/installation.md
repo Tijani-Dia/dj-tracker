@@ -2,7 +2,7 @@
 
 ## Install the package
 
-Install `django-trackings` from PyPi:
+Install `dj-tracker` from PyPi:
 
 ```bash
 pip install dj-tracker

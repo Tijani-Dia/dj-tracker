@@ -81,7 +81,7 @@
                                     {% for query in slowest %}
                                         <tr>
                                             <td><a href="{{ query.get_absolute_url }}">{{ query.pk }}</a></td>
-                                            <td>{{ query.average_duration }}</td>
+                                            <td>{{ query.average_duration_in_ms }}</td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>

@@ -178,6 +178,10 @@ class Query(Promisable):
         if self.attributes_accessed == {}:
             yield "Use .values() or .values_list()"
 
+    @property
+    def average_duration_in_ms(self):
+        return round(self.average_duration * 10e-6, 2)
+
 
 class QueryGroupManager(models.Manager):
     def annotate_num_queries(self):

@@ -14,7 +14,7 @@
             <dt class="col-4">Query type</dt>
             <dd class="col-8">{{ query.query_type }}</dd>
             <dt class="col-4">Average duration</dt>
-            <dd class="col-8">{{ query.average_duration }} ms</dd>
+            <dd class="col-8">{{ query.average_duration_in_ms }} ms</dd>
             {% if qs_tracking.duplicate %}
                 <dt class="col-4">Repeated</dt>
                 <dd class="col-8">{{ qs_tracking.num_occurrences }} time(s)</dd>

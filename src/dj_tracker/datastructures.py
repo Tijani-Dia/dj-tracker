@@ -136,7 +136,7 @@ class FieldTracker(HashableMixin):
 
 
 class InstanceTracker(dict):
-    __slots__ = ("queryset", "object", "related")
+    __slots__ = ()
 
     def __missing__(self, field):
         return
@@ -153,19 +153,17 @@ class InstanceTracker(dict):
     get_field_tracker = __getitem__
 
     def __getstate__(self):
-        return {
-            "values": dict(self),
-            "queryset": self.queryset,
-            "object": self.object() if hasattr(self, "object") else None,
-        }
+        return {"values": dict(self)}
 
     def __setstate__(self, state):
         self.update(state["values"])
-        self.queryset = state["queryset"]
-        self.object = weak_reference(state["object"]) if state["object"] else None
 
-    def add_related_instance(self, instance, field, related_model):
-        self.related[(field, related_model)].append(instance)
+
+new_instance_tracker = InstanceTracker.fromkeys
+
+
+class ModelInstanceTracker(InstanceTracker):
+    __slots__ = ("queryset", "object", "related")
 
     def __getattr__(self, name):
         if name == "related":
@@ -173,8 +171,22 @@ class InstanceTracker(dict):
             return related
         raise AttributeError
 
+    def add_related_instance(self, instance, field, related_model):
+        self.related[(field, related_model)].append(instance)
 
-new_instance_tracker = InstanceTracker.fromkeys
+    def __getstate__(self):
+        state = super().__getstate__()
+        state.update(object=self.object(), queryset=self.queryset)
+        return state
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.queryset = state["queryset"]
+        if obj := state["object"]:
+            self.object = weak_reference(obj)
+
+
+new_model_instance_tracker = ModelInstanceTracker.fromkeys
 
 
 class RequestTracker:
@@ -307,7 +319,6 @@ class QuerySetTracker(dict):
     __slots__ = (
         "duration",
         "num_ready",
-        "num_trackers",
         "request_tracker",
         "related_queryset",
         "_iter_done",
@@ -344,9 +355,9 @@ class QuerySetTracker(dict):
             if track_attributes_accessed
             else None,
         )
+        self.num_ready = 0
         self.constructed = set()
         self.related_queryset = None
-        self.num_trackers = self.num_ready = 0
         self._iter_done = self._result_cache_collected = False
 
         if (instance := queryset._hints.get("instance")) and (
@@ -371,20 +382,23 @@ class QuerySetTracker(dict):
     def add_deferred_field(self, field, instance):
         self.deferred_fields[field].add(instance)
 
-    def track_instance(self, instance, model, field=""):
-        if not (getter := INSTANCE_TRACKER_GETTERS.get(type(instance))):
-            tracker = instance._tracker
-            tracker.object = weak_reference(instance)
+    def track_instance(self, instance, model, field="", *, tracker=None):
+        self["num_instances"] += 1
+        if tracker:
+            self.instance_trackers[(field, model)].append(tracker)
+            weakref_finalize(instance, self.instance_tracker_ready)
         else:
-            instance, tracker = getter(instance)
+            self.num_ready += 1
+        return instance
 
-        self.instance_trackers[(field, model)].append(tracker)
-        self.num_trackers += 1
+    def track_model_instance(self, instance, model, field=""):
+        tracker = instance._tracker
+        tracker.object = weak_reference(instance)
         tracker.queryset = self
-        weakref_finalize(instance, self.instance_tracker_ready)
+        self.track_instance(instance, model, field, tracker=tracker)
 
         if related := getattr(tracker, "related", None):
-            track = self.track_instance
+            track_related_instance = self.track_model_instance
             for (
                 related_field,
                 related_model,
@@ -393,16 +407,26 @@ class QuerySetTracker(dict):
                     related_field if not field else f"{field}__{related_field}"
                 )
                 for related_instance in related_instances:
-                    track(related_instance, related_model, field_label)
+                    track_related_instance(related_instance, related_model, field_label)
 
             del tracker.related
 
         return instance
 
+    def track_dict(self, d, model):
+        tracker = new_instance_tracker(d)
+        return self.track_instance(TrackedDict(d, tracker), model, tracker=tracker)
+
+    def track_sequence(self, seq, model):
+        tracker = new_instance_tracker(map(str, range(len(seq))))
+        return self.track_instance(
+            TrackedSequence(seq, tracker), model, tracker=tracker
+        )
+
     @property
     def ready(self):
         return (
-            self.num_ready == self.num_trackers
+            self.num_ready == self["num_instances"]
             and self._iter_done
             and self._result_cache_collected
         )
@@ -481,20 +505,3 @@ def get_request_tracker(request):
 
     tracker.num_queries += 1
     return tracker
-
-
-def get_sequence_tracker(sequence):
-    tracker = new_instance_tracker(map(str, range(len(sequence))))
-    return TrackedSequence(sequence, tracker), tracker
-
-
-def get_dict_tracker(d):
-    tracker = new_instance_tracker(d)
-    return TrackedDict(d, tracker), tracker
-
-
-INSTANCE_TRACKER_GETTERS = {
-    dict: get_dict_tracker,
-    list: get_sequence_tracker,
-    tuple: get_sequence_tracker,
-}

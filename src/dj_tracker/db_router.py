@@ -5,7 +5,6 @@ class DjTrackerRouter:
     def db_for_read(self, model, **hints):
         if model._meta.app_label == self.app_label:
             return self.db_alias
-        return None
 
     db_for_write = db_for_read
 
@@ -14,4 +13,3 @@ class DjTrackerRouter:
             return app_label == self.app_label
         if app_label == self.app_label:
             return False
-        return None

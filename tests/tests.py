@@ -330,6 +330,9 @@ class TestSelectRelated(DjTrackerTestCase):
             get_instance_tracker(comment).queryset,
         )
 
+        # All related instances are tracked by one qs tracker.
+        self.assertEqual(get_instance_tracker(comment).queryset["num_instances"], 3)
+
 
 class TestCacheHits(DjTrackerTestCase):
     def test_cache_hits(self):
@@ -408,6 +411,7 @@ class TestValuesListIterable(DjTrackerTestCase):
                 qs_tracker = get_queryset_tracker(objs)
                 self.assertIsInstance(qs_tracker, QuerySetTracker)
                 self.assertEqual(qs_tracker["num_instances"], 3)
+                self.assertEqual(qs_tracker.num_ready, 3)
 
 
 class TestCountHint(DjTrackerTestCase):

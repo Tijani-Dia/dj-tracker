@@ -19,7 +19,7 @@ from dj_tracker.context import get_request, set_request
 from dj_tracker.datastructures import (
     QuerySetTracker,
     TrackedResultCache,
-    new_instance_tracker,
+    new_model_instance_tracker,
 )
 from dj_tracker.field_descriptors import DESCRIPTORS_MAP
 from dj_tracker.logging import logger
@@ -51,7 +51,7 @@ class FromDBDescriptor:
 
     def __call__(self, db, field_names, values):
         instance = self.__func__(self.model, db, field_names, values)
-        instance._tracker = new_instance_tracker(field_names)
+        instance._tracker = new_model_instance_tracker(field_names)
         return instance
 
 
@@ -126,11 +126,7 @@ def wrap_local_setter(local_setter, field, related_model):
     return wrapper
 
 
-def return_instance(instance, model):
-    return instance
-
-
-def track_instances(Iterable, track_attributes_accessed):
+def track_instances(Iterable, track_attributes_accessed, instance_tracker):
     assert not hasattr(Iterable, "__patched")
     iterate = Iterable.__iter__
 
@@ -143,18 +139,13 @@ def track_instances(Iterable, track_attributes_accessed):
             yield from iterate(self)
             return
 
-        iterable_class = self.__class__
         qs_tracker = QuerySetTracker(
             qs,
             QueryType.SELECT,
-            iterable_class=iterable_class.__name__,
+            iterable_class=self.__class__.__name__,
             track_attributes_accessed=track_attributes_accessed,
         )
-        track_instance = (
-            qs_tracker.track_instance
-            if iterable_class is not query.FlatValuesListIterable
-            else return_instance
-        )
+        track_instance = getattr(qs_tracker, instance_tracker)
 
         with connection.execute_wrapper(
             partial(execute_wrapper, qs_tracker=qs_tracker)
@@ -162,7 +153,6 @@ def track_instances(Iterable, track_attributes_accessed):
             started_at = perf_counter_ns()
             for obj in iterate(self):
                 yield track_instance(obj, model)
-                qs_tracker["num_instances"] += 1
             duration = perf_counter_ns() - started_at
 
         qs_tracker.iter_done(qs, duration)
@@ -183,13 +173,13 @@ def patch_queryset():
 
 
 def patch_iterables():
-    for Iterable, track_attributes_accessed in (
-        (query.ModelIterable, TRACK_ATTRIBUTES_ACCESSED),
-        (query.ValuesIterable, False),
-        (query.ValuesListIterable, False),
-        (query.FlatValuesListIterable, False),
+    for Iterable, track_attributes_accessed, instance_tracker in (
+        (query.ModelIterable, TRACK_ATTRIBUTES_ACCESSED, "track_model_instance"),
+        (query.ValuesIterable, False, "track_dict"),
+        (query.ValuesListIterable, False, "track_sequence"),
+        (query.FlatValuesListIterable, False, "track_instance"),
     ):
-        track_instances(Iterable, track_attributes_accessed)
+        track_instances(Iterable, track_attributes_accessed, instance_tracker)
         Iterable.__patched = True
 
 

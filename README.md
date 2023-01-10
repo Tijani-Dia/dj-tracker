@@ -26,7 +26,7 @@
 -   Provides hints on when to use `.count`, `.contains`, `.exists`
 -   Detect N+1 queries
 -   Detect when a deferred field is loaded
--   and many more insights into your queries....
+-   and many more insights into your queries with minimized overhead....
 
 ## Requirements
 
@@ -40,3 +40,9 @@ Check out the [installation steps](https://tijani-dia.github.io/dj-tracker/insta
 ## Documentation
 
 All documentation is in the "docs" directory and online at https://tijani-dia.github.io/dj-tracker/
+
+## Development phase
+
+Currently, `dj-tracker` is in [alpha phase](https://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha).
+
+I'd like to improve the UI, have a more robust test suite and improve the code quality (docs, typing...). Any feedback will be highly appreciated, especially for the UI.

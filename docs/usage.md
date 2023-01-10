@@ -8,13 +8,13 @@ Run `manage.py runserver --noreload` and visit some URLs to have some trackings.
 
 The trackings dashboard is available at `/dj_tracker/`. It shows the latest and most visited URLs along with various insights into your queries.
 
-![dj-tracker dashboard](images/dashboard.png)
+![dj-tracker dashboard](images/dashboard.jpg)
 
 ## Requests
 
 When you click in one of the requests shown in the dashboard, it will redirect to page showing the different query groups for that request along with how much time they occured.
 
-![dj-tracker request](images/request.png)
+![dj-tracker request](images/request.jpg)
 
 ## Query groups
 

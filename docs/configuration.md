@@ -37,7 +37,7 @@ DJ_TRACKER = {
 
 ### `COLLECTION_INTERVAL`
 
-Interval at which the `Collector` should save trackings. The default value is `3ms`.
+Interval at which the `Collector` should save trackings. The default value is `5ms`.
 
 ```python
 DJ_TRACKER = {
@@ -59,9 +59,19 @@ DJ_TRACKER = {
 }
 ```
 
+## `TRACK_ATTRIBUTES_ACCESSED`
+
+`dj-tracker` patches the `__getattribute__` method on tracked models to provide hints on using `values` or `values_list` when it detects that no model attribute or method was accessed except the fields fetched from the database. This add an overhead to avery attribute access. To disable this feature, set this setting to `False`. It's enabled by default.
+
+```python
+DJ_TRACKER = {
+    "TRACK_ATTRIBUTES_ACCESSED": False
+}
+```
+
 ## `trackings` database
 
-`dj_tracker` gives the possibility to have a separate table to store trackings. This can be useful if you intend to run it with your tests but also to track model instances in different databases(`staging`, `production`, ...).
+`dj_tracker` gives the possibility to have a separate table to store trackings. This can be useful if you intend to run it with your tests, to track model instances in different databases (`staging`, `production`, ...) but also to monitor your queries between releases.
 
 ### Add the database
 

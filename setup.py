@@ -1,6 +1,6 @@
 from setuptools import Extension, find_packages, setup
 
-__version__ = "0.1.1a2"
+__version__ = "0.1.2a0"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()

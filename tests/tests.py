@@ -17,7 +17,7 @@ from tests.factories import (
 )
 from tests.models import Author, Book, Category, Comment, TastyRestaurant, User
 
-get_instance_tracker = attrgetter("_tracker")
+get_instance_tracker = get_queryset_tracker = attrgetter("_tracker")
 
 
 class DjTrackerTestCase(TestCase):
@@ -341,7 +341,7 @@ class TestCacheHits(DjTrackerTestCase):
                 for _ in range(n):
                     self.assertEqual(len(authors), 1)
 
-                self.assertEqual(authors._tracker["cache_hits"], 2 * n - 1)
+                self.assertEqual(get_queryset_tracker(authors)["cache_hits"], 2 * n - 1)
 
 
 class TestInstanceTracking(DjTrackerTestCase):
@@ -371,7 +371,7 @@ class TestValuesIterable(DjTrackerTestCase):
             self.assertEqual(tracker["date_of_birth"].get, 1)
             self.assertEqual(tracker["date_of_birth"].set, 0)
 
-        qs_tracker = objs._tracker
+        qs_tracker = get_queryset_tracker(objs)
         self.assertIsInstance(qs_tracker, QuerySetTracker)
         self.assertEqual(qs_tracker["num_instances"], 3)
 
@@ -390,7 +390,7 @@ class TestValuesListIterable(DjTrackerTestCase):
                 self.assertEqual(tracker[str(i)].get, 1)
                 self.assertEqual(tracker[str(i)].set, 0)
 
-        qs_tracker = objs._tracker
+        qs_tracker = get_queryset_tracker(objs)
         self.assertIsInstance(qs_tracker, QuerySetTracker)
         self.assertEqual(qs_tracker["num_instances"], 3)
 
@@ -405,7 +405,7 @@ class TestValuesListIterable(DjTrackerTestCase):
                     self.assertIsInstance(obj, attr_type)
                     self.assertFalse(hasattr(obj, "_tracker"))
 
-                qs_tracker = objs._tracker
+                qs_tracker = get_queryset_tracker(objs)
                 self.assertIsInstance(qs_tracker, QuerySetTracker)
                 self.assertEqual(qs_tracker["num_instances"], 3)
 
@@ -420,7 +420,7 @@ class TestCountHint(DjTrackerTestCase):
                 for _ in range(len_calls):
                     self.assertEqual(len(qs), 2)
 
-                qs_tracker = qs._tracker
+                qs_tracker = get_queryset_tracker(qs)
                 self.assertEqual(qs_tracker["len_calls"], len_calls)
                 self.assertEqual(qs_tracker["cache_hits"], 2 * len_calls - 1)
 
@@ -434,7 +434,7 @@ class TestContainsHint(DjTrackerTestCase):
         for contains_calls in range(1, 5):
             qs = Author.objects.all()
             qs._fetch_all()
-            qs_tracker = qs._tracker
+            qs_tracker = get_queryset_tracker(qs)
 
             with self.subTest(contains_calls=contains_calls):
                 for _ in range(contains_calls):
@@ -450,7 +450,7 @@ class TestExistsHint(DjTrackerTestCase):
         for exists_calls in range(1, 5):
             qs = Author.objects.all()
             qs._fetch_all()
-            qs_tracker = qs._tracker
+            qs_tracker = get_queryset_tracker(qs)
 
             with self.subTest(exists_calls=exists_calls):
                 for _ in range(exists_calls):
@@ -490,7 +490,7 @@ class TestRelatedField(DjTrackerTestCase):
         category = Category.objects.last()
         books = category.books.all()
         self.assertEqual(len(books), 3)
-        tracker = books._tracker
+        tracker = get_queryset_tracker(books)
         self.assertEqual(tracker["field"], (Category, "books"))
 
 
@@ -508,7 +508,7 @@ class TestDepth(DjTrackerTestCase):
             get_instance_tracker(book).queryset,
         )
         self.assertEqual(get_instance_tracker(category).queryset["depth"], 1)
-        self.assertEqual(authors._tracker["depth"], 1)
+        self.assertEqual(get_queryset_tracker(authors)["depth"], 1)
         self.assertEqual(get_instance_tracker(first_author_user).queryset["depth"], 2)
 
 
@@ -523,7 +523,7 @@ class TestAttributesAccessed(DjTrackerTestCase):
             self.assertTrue(obj.title)
             self.assertEqual(obj.get_title_and_summary(), f"{obj.title}-{obj.summary}")
 
-        attrs_accessed = qs._tracker["attributes_accessed"]
+        attrs_accessed = get_queryset_tracker(qs)["attributes_accessed"]
         self.assertEqual(
             set(attrs_accessed.keys()), {"__dict__", "_state", "get_title_and_summary"}
         )
@@ -559,6 +559,13 @@ class TestM2MThroughModels(DjTrackerTestCase):
             self.assertEqual(tracker["author_id"].get, 0)
             self.assertEqual(tracker["author_id"].set, 1)
 
-        qs_tracker = qs._tracker
+        qs_tracker = get_queryset_tracker(qs)
         self.assertEqual(qs_tracker["num_instances"], 3)
         self.assertEqual(qs_tracker["model"], BookAuthors)
+
+
+class TestEmptyQueryset(DjTrackerTestCase):
+    def test_empty_qs(self):
+        qs = Book.objects.all()
+        self.assertEqual(len(qs), 0)
+        self.assertEqual(get_queryset_tracker(qs)["num_instances"], 0)

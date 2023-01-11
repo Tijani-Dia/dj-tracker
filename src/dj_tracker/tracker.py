@@ -129,6 +129,7 @@ def wrap_local_setter(local_setter, field, related_model):
 def track_instances(Iterable, track_attributes_accessed, instance_tracker):
     assert not hasattr(Iterable, "__patched")
     iterate = Iterable.__iter__
+    query_type = QueryType.SELECT
 
     @wraps(iterate)
     def __iter__(self):
@@ -140,10 +141,7 @@ def track_instances(Iterable, track_attributes_accessed, instance_tracker):
             return
 
         qs_tracker = QuerySetTracker(
-            qs,
-            QueryType.SELECT,
-            iterable_class=self.__class__.__name__,
-            track_attributes_accessed=track_attributes_accessed,
+            qs, query_type, self.__class__, track_attributes_accessed
         )
         track_instance = getattr(qs_tracker, instance_tracker)
 

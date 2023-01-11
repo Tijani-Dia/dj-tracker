@@ -339,26 +339,28 @@ class QuerySetTracker(dict):
         self,
         queryset,
         query_type,
-        *,
-        iterable_class="",
+        iterable_class=None,
         track_attributes_accessed=False,
     ):
         super().__init__()
+        self.num_ready = 0
+        self.constructed = set()
+        self.related_queryset = None
+        self._iter_done = self._result_cache_collected = False
+
         self.update(
             sql="",
             num_instances=0,
             model=queryset.model,
             query_type=query_type,
             traceback=get_traceback(),
-            iterable_class=iterable_class,
-            attributes_accessed=HashableCounter()
-            if track_attributes_accessed
-            else None,
         )
-        self.num_ready = 0
-        self.constructed = set()
-        self.related_queryset = None
-        self._iter_done = self._result_cache_collected = False
+
+        if iterable_class:
+            self["iterable_class"] = iterable_class
+
+        if track_attributes_accessed:
+            self["attributes_accessed"] = HashableCounter()
 
         if (instance := queryset._hints.get("instance")) and (
             instance_tracker := getattr(instance, "_tracker", None)

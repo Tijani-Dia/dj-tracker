@@ -8,14 +8,6 @@ class QueryType(models.TextChoices):
     EXISTS = "EXISTS"
 
 
-class IterableClass(models.TextChoices):
-    MODEL = "ModelIterable"
-    VALUES = "ValuesIterable"
-    VALUES_LIST = "ValuesListIterable"
-    FLAT_VALUES_LIST = "FlatValuesListIterable"
-    NAMED_VALUES_LIST = "NamedValuesListIterable"
-
-
 class Promisable(models.Model):
     """
     A Promisable is a model whose instances' primary keys (`cache_key`)
@@ -143,9 +135,7 @@ class Query(Promisable):
     traceback = models.ForeignKey(Traceback, on_delete=models.CASCADE)
     average_duration = models.PositiveIntegerField(null=True)
     cache_hits = models.PositiveSmallIntegerField(null=True)
-    iterable_class = models.CharField(
-        max_length=24, choices=IterableClass.choices, blank=True
-    )
+    iterable_class = models.CharField(blank=True, max_length=64)
     query_type = models.CharField(choices=QueryType.choices, max_length=6)
     depth = models.PositiveSmallIntegerField(default=0)
     attributes_accessed = models.JSONField(null=True)

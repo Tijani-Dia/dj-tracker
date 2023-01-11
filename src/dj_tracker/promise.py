@@ -3,10 +3,10 @@ from typing import Dict, FrozenSet, Hashable, Optional, Tuple
 
 from django.apps import apps
 from django.db.models.base import ModelBase
+from django.db.models.query import BaseIterable
 
 from dj_tracker.models import (
     InstanceFieldTracking,
-    IterableClass,
     QuerySetTracking,
     QueryType,
     StackEntry,
@@ -436,8 +436,6 @@ class QueryPromise(Promise):
         model: ModelBase,
         num_instances: int,
         query_type: QueryType,
-        iterable_class: IterableClass,
-        attributes_accessed: Optional[HashableCounter],
         traceback: Tuple[HashableList, Optional["TracebackEntry"]],
         depth: Optional[int] = None,
         cache_hits: Optional[int] = None,
@@ -445,8 +443,10 @@ class QueryPromise(Promise):
         exists_calls: Optional[int] = None,
         contains_calls: Optional[int] = None,
         field: Optional[Tuple[ModelBase, str]] = None,
+        iterable_class: Optional[BaseIterable] = None,
         instance_trackings: Optional[FrozenSet] = None,
         related_queryset_id: Optional[int] = None,
+        attributes_accessed: Optional[HashableCounter] = None,
     ) -> int:
         return hash(
             (
@@ -492,14 +492,14 @@ class QueryPromise(Promise):
                 )
                 for model, select_related_field, field_trackings in instance_trackings
             )
+        if iterable_class := kwargs.get("iterable_class"):
+            kwargs["iterable_class"] = iterable_class.__name__
 
     @staticmethod
     def get_cache_key(
         *,
         query_type: str,
         num_instances: int,
-        iterable_class: Optional[str],
-        attributes_accessed: Optional[HashableCounter],
         sql_id: int,
         model_id: int,
         traceback_id: int,
@@ -509,8 +509,10 @@ class QueryPromise(Promise):
         len_calls: Optional[int] = None,
         exists_calls: Optional[int] = None,
         contains_calls: Optional[int] = None,
+        iterable_class: Optional[str] = None,
         instance_trackings: Optional[FrozenSet] = None,
         related_queryset_id: Optional[int] = None,
+        attributes_accessed: Optional[HashableCounter] = None,
     ) -> int:
         return hash(
             (
@@ -519,7 +521,6 @@ class QueryPromise(Promise):
                 traceback_id,
                 num_instances,
                 hash_string(query_type),
-                hash_string(iterable_class) if iterable_class else 0,
                 depth if depth else 0,
                 field_id if field_id else 0,
                 cache_hits if cache_hits else 0,
@@ -527,6 +528,7 @@ class QueryPromise(Promise):
                 exists_calls if exists_calls else 0,
                 contains_calls if contains_calls else 0,
                 instance_trackings if instance_trackings else 0,
+                hash_string(iterable_class) if iterable_class else 0,
                 hash(
                     frozenset(
                         (hash_string(attr), count)

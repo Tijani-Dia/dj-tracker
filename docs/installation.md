@@ -46,6 +46,14 @@ urlpatterns = [
 ]
 ```
 
+## Run migrations
+
+Run the migrations:
+
+```shell
+python manage.py migrate
+```
+
 ## There we go
 
 Your Django models are now ready to be tracked!

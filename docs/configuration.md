@@ -99,3 +99,11 @@ DATABASE_ROUTERS = [
     "dj_tracker.db_router.DjTrackerRouter",
 ]
 ```
+
+### Run migrations
+
+Run the migrations for the `trackings` database:
+
+```shell
+python manage.py migrate --database=trackings
+```

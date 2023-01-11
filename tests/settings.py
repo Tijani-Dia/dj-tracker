@@ -66,3 +66,5 @@ AUTH_USER_MODEL = "tests.User"
 DJ_TRACKER = {
     "COLLECTION_INTERVAL": 1,
 }
+
+TEST_RUNNER = "dj_tracker.test.DjTrackerRunner"

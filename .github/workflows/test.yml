@@ -45,9 +45,6 @@ jobs:
         run: |
           pip install -e '.[test]'
           pip install coverage
-      - name: Setup trackings database
-        run: |
-          python manage.py migrate --database=trackings
       - name: Test
         run: |
           coverage run manage.py test

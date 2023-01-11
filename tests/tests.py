@@ -5,7 +5,6 @@ from operator import attrgetter
 from django import VERSION as DJANGO_VERSION
 from django.test import TestCase
 
-from dj_tracker import tracker
 from dj_tracker.datastructures import QuerySetTracker, TrackedDict, TrackedSequence
 from tests.factories import (
     AuthorFactory,
@@ -20,13 +19,7 @@ from tests.models import Author, Book, Category, Comment, TastyRestaurant, User
 get_instance_tracker = get_queryset_tracker = attrgetter("_tracker")
 
 
-class DjTrackerTestCase(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        tracker.start()
-
-
-class TestAttributeTracker(DjTrackerTestCase):
+class TestAttributeTracker(TestCase):
     def test_track_attribute(self):
         for _ in range(3):
             CategoryFactory()
@@ -68,7 +61,7 @@ class TestAttributeTracker(DjTrackerTestCase):
         self.assertEqual(related_qs_tracker["field"], (Book, "title"))
 
 
-class TestForwardManyToOneTracker(DjTrackerTestCase):
+class TestForwardManyToOneTracker(TestCase):
     def test_track_forward_many_to_one(self):
         category = CategoryFactory()
         for _ in range(2):
@@ -93,7 +86,7 @@ class TestForwardManyToOneTracker(DjTrackerTestCase):
         )
 
 
-class TestForwardOneToOneTracker(DjTrackerTestCase):
+class TestForwardOneToOneTracker(TestCase):
     def test_track_forward_one_to_one(self):
         AuthorFactory()
         author = Author.objects.last()
@@ -117,7 +110,7 @@ class TestForwardOneToOneTracker(DjTrackerTestCase):
         )
 
 
-class TestReverseOneToOneTracker(DjTrackerTestCase):
+class TestReverseOneToOneTracker(TestCase):
     def test_track_forward_one_to_one(self):
         AuthorFactory()
         user = User.objects.last()
@@ -140,7 +133,7 @@ class TestReverseOneToOneTracker(DjTrackerTestCase):
         )
 
 
-class TestReverseManyToOneTracker(DjTrackerTestCase):
+class TestReverseManyToOneTracker(TestCase):
     def test_track_reverse_many_to_one(self):
         category = CategoryFactory()
         for _ in range(2):
@@ -168,7 +161,7 @@ class TestReverseManyToOneTracker(DjTrackerTestCase):
         )
 
 
-class TestManyToManyTracker(DjTrackerTestCase):
+class TestManyToManyTracker(TestCase):
     def test_track_many_to_many(self):
         authors = [AuthorFactory() for _ in range(3)]
         for _ in range(3):
@@ -206,7 +199,7 @@ class TestManyToManyTracker(DjTrackerTestCase):
         )
 
 
-class TestGenericForeignKeyTracker(DjTrackerTestCase):
+class TestGenericForeignKeyTracker(TestCase):
     def test_track_generic_foreign_key(self):
         book = BookFactory()
         CommentFactory(content_object=book)
@@ -231,7 +224,7 @@ class TestGenericForeignKeyTracker(DjTrackerTestCase):
         )
 
 
-class TestReverseGenericManyToOneTracker(DjTrackerTestCase):
+class TestReverseGenericManyToOneTracker(TestCase):
     def test_reverse_generic_many_to_one_tracker(self):
         book = BookFactory()
         for _ in range(2):
@@ -263,7 +256,7 @@ class TestReverseGenericManyToOneTracker(DjTrackerTestCase):
         )
 
 
-class TestPrefetchRelated(DjTrackerTestCase):
+class TestPrefetchRelated(TestCase):
     def test_prefetch_related(self):
         category = CategoryFactory()
         BookFactory()
@@ -290,7 +283,7 @@ class TestPrefetchRelated(DjTrackerTestCase):
             self.assertEqual(book_tracker["category"].set, 1)
 
 
-class TestSelectRelated(DjTrackerTestCase):
+class TestSelectRelated(TestCase):
     def test_select_related_fields(self):
         CommentFactory(content_object=BookFactory(), user=AuthorFactory().user)
         comment = Comment.objects.select_related("user__author", "content_type").last()
@@ -334,7 +327,7 @@ class TestSelectRelated(DjTrackerTestCase):
         self.assertEqual(get_instance_tracker(comment).queryset["num_instances"], 3)
 
 
-class TestCacheHits(DjTrackerTestCase):
+class TestCacheHits(TestCase):
     def test_cache_hits(self):
         AuthorFactory()
 
@@ -347,7 +340,7 @@ class TestCacheHits(DjTrackerTestCase):
                 self.assertEqual(get_queryset_tracker(authors)["cache_hits"], 2 * n - 1)
 
 
-class TestInstanceTracking(DjTrackerTestCase):
+class TestInstanceTracking(TestCase):
     def test_instances_tracking_occurences(self):
         for _ in range(3):
             BookFactory()
@@ -361,7 +354,7 @@ class TestInstanceTracking(DjTrackerTestCase):
         self.assertEqual(queryset["num_instances"], 3)
 
 
-class TestValuesIterable(DjTrackerTestCase):
+class TestValuesIterable(TestCase):
     def test_values(self):
         for _ in range(3):
             AuthorFactory()
@@ -379,7 +372,7 @@ class TestValuesIterable(DjTrackerTestCase):
         self.assertEqual(qs_tracker["num_instances"], 3)
 
 
-class TestValuesListIterable(DjTrackerTestCase):
+class TestValuesListIterable(TestCase):
     def test_values_list(self):
         for _ in range(3):
             AuthorFactory()
@@ -414,7 +407,7 @@ class TestValuesListIterable(DjTrackerTestCase):
                 self.assertEqual(qs_tracker.num_ready, 3)
 
 
-class TestCountHint(DjTrackerTestCase):
+class TestCountHint(TestCase):
     def test_count_hint(self):
         for _ in range(2):
             AuthorFactory()
@@ -429,7 +422,7 @@ class TestCountHint(DjTrackerTestCase):
                 self.assertEqual(qs_tracker["cache_hits"], 2 * len_calls - 1)
 
 
-class TestContainsHint(DjTrackerTestCase):
+class TestContainsHint(TestCase):
     def test_contains_hint(self):
         for _ in range(2):
             AuthorFactory()
@@ -448,7 +441,7 @@ class TestContainsHint(DjTrackerTestCase):
                 self.assertEqual(qs_tracker["cache_hits"], 2 * contains_calls)
 
 
-class TestExistsHint(DjTrackerTestCase):
+class TestExistsHint(TestCase):
     def test_exists_hint(self):
         AuthorFactory()
         for exists_calls in range(1, 5):
@@ -464,7 +457,7 @@ class TestExistsHint(DjTrackerTestCase):
                 self.assertEqual(qs_tracker["cache_hits"], 2 * exists_calls)
 
 
-class TestIterator(DjTrackerTestCase):
+class TestIterator(TestCase):
     def test_iterator(self):
         AuthorFactory()
         qs = Author.objects.all()
@@ -477,7 +470,7 @@ class TestIterator(DjTrackerTestCase):
         self.assertTrue(tracker.ready)
 
 
-class TestRelatedField(DjTrackerTestCase):
+class TestRelatedField(TestCase):
     def test_related_field(self):
         BookFactory()
         book = Book.objects.get()
@@ -498,7 +491,7 @@ class TestRelatedField(DjTrackerTestCase):
         self.assertEqual(tracker["field"], (Category, "books"))
 
 
-class TestDepth(DjTrackerTestCase):
+class TestDepth(TestCase):
     def test_depth(self):
         BookFactory(authors=[AuthorFactory() for _ in range(2)])
         book = Book.objects.get()
@@ -516,7 +509,7 @@ class TestDepth(DjTrackerTestCase):
         self.assertEqual(get_instance_tracker(first_author_user).queryset["depth"], 2)
 
 
-class TestAttributesAccessed(DjTrackerTestCase):
+class TestAttributesAccessed(TestCase):
     def test_attributes_accessed(self):
         for _ in range(2):
             BookFactory(authors=[AuthorFactory() for _ in range(2)])
@@ -534,7 +527,7 @@ class TestAttributesAccessed(DjTrackerTestCase):
         self.assertEqual(attrs_accessed["get_title_and_summary"], len(qs))
 
 
-class TestInheritance(DjTrackerTestCase):
+class TestInheritance(TestCase):
     def test_inheritance(self):
         TastyRestaurantFactory()
         resto = TastyRestaurant.objects.get()
@@ -547,7 +540,7 @@ class TestInheritance(DjTrackerTestCase):
         test_inheritance = unittest.expectedFailure(test_inheritance)
 
 
-class TestM2MThroughModels(DjTrackerTestCase):
+class TestM2MThroughModels(TestCase):
     def test_m2m_through_models_are_tracked(self):
         BookFactory(authors=[AuthorFactory() for _ in range(3)])
 
@@ -568,7 +561,7 @@ class TestM2MThroughModels(DjTrackerTestCase):
         self.assertEqual(qs_tracker["model"], BookAuthors)
 
 
-class TestEmptyQueryset(DjTrackerTestCase):
+class TestEmptyQueryset(TestCase):
     def test_empty_qs(self):
         qs = Book.objects.all()
         self.assertEqual(len(qs), 0)

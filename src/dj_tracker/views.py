@@ -43,6 +43,11 @@ class HomeView(TemplateView):
         context["most_repeated_queries"] = Query.objects.annotate(
             num_trackings=Count("trackings")
         ).order_by("-num_trackings")[:5]
+        context["largest_query_groups"] = (
+            QueryGroup.objects.annotate_num_queries()
+            .exclude(trackings__request__path__path="")
+            .order_by("-num_queries")[:5]
+        )
         return context
 
 

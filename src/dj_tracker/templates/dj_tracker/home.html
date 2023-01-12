@@ -69,6 +69,25 @@
                             </table>
                         </div>
                         <div class="row">
+                            <h5 class="card-title">Largest query groups</h5>
+                            <table class="table">
+                                <thead>
+                                  <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Num queries</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                    {% for query_group in largest_query_groups %}
+                                        <tr>
+                                            <td><a href="{{ query_group.get_absolute_url }}">{{ query_group.pk }}</a></td>
+                                            <td>{{ query_group.num_queries }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="row">
                             <h5 class="card-title">Slowest</h5>
                             <table class="table">
                                 <thead>

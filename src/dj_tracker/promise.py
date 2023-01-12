@@ -1,4 +1,3 @@
-from linecache import getline
 from typing import Dict, FrozenSet, Hashable, Optional, Tuple
 
 from django.apps import apps
@@ -11,7 +10,6 @@ from dj_tracker.models import (
     QueryType,
     StackEntry,
 )
-from dj_tracker.traceback import TracebackEntry
 from dj_tracker.utils import (
     HashableCounter,
     HashableList,
@@ -244,26 +242,24 @@ class SourceCodePromise(Promise):
     __slots__ = ()
 
     @staticmethod
-    def get_in_memory_key(*, entry: TracebackEntry) -> int:
+    def get_in_memory_key(*, entry) -> int:
         return entry.hash_value
 
     @staticmethod
-    def set_creation_kwargs(kwargs):
-        entry = kwargs.pop("entry")
-        filename = entry.filename
-        lineno = entry.lineno
-        kwargs.update(
-            filename_id=SourceFilePromise.get_or_create(name=filename),
-            lineno=lineno,
-            func=entry.func,
-            code=getline(filename, lineno).strip(),
-        )
+    def get_cache_key(*, entry) -> int:
+        return entry.cache_key
 
-    @staticmethod
-    def get_cache_key(
-        *, filename_id: int, lineno: int, code: str, func: str = ""
-    ) -> int:
-        return hash((filename_id, lineno, hash_string(code), hash_string(func)))
+    def __init__(self, cache_key, creation_kwargs):
+        entry = creation_kwargs["entry"]
+        super().__init__(
+            cache_key,
+            {
+                "filename_id": entry.filename_id,
+                "lineno": entry.lineno,
+                "func": entry.func,
+                "code": entry.code,
+            },
+        )
 
 
 class TracebackPromise(Promise):
@@ -274,9 +270,7 @@ class TracebackPromise(Promise):
     __slots__ = "stack"
 
     @staticmethod
-    def get_in_memory_key(
-        *, stack: HashableList, template_info: Optional[TracebackEntry]
-    ) -> int:
+    def get_in_memory_key(*, stack: HashableList, template_info) -> int:
         return (
             stack.hash_value
             if not template_info
@@ -436,7 +430,7 @@ class QueryPromise(Promise):
         model: ModelBase,
         num_instances: int,
         query_type: QueryType,
-        traceback: Tuple[HashableList, Optional["TracebackEntry"]],
+        traceback: Tuple,
         depth: Optional[int] = None,
         cache_hits: Optional[int] = None,
         len_calls: Optional[int] = None,

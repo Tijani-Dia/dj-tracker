@@ -14,7 +14,7 @@ from dj_tracker.context import get_request
 from dj_tracker.models import QueryGroup, QuerySetTracking, Tracking
 from dj_tracker.promise import QueryGroupPromise, QueryPromise, RequestPromise
 from dj_tracker.traceback import get_traceback
-from dj_tracker.utils import HashableCounter, HashableMixin, cached_attribute
+from dj_tracker.utils import HashableCounter, HashableMixin, LazySlots, cached_attribute
 
 weak_reference = weakref.ref
 weakref_finalize = weakref.finalize
@@ -112,15 +112,17 @@ class TrackedResultCache(TrackedObject, collections.abc.Sequence):
 
 @functools.total_ordering
 class FieldTracker(HashableMixin):
-    __slots__ = ("get", "set", "hash_value")
+    __slots__ = ("get", "set")
 
     def __init__(self):
         self.get = self.set = 0
 
-    def hash(self):
+    __hash__ = HashableMixin.__hash__
+
+    def hash_value(self):
         return hash((self.get, self.set))
 
-    __hash__ = HashableMixin.__hash__
+    lazy_slots = (hash_value,)
 
     def __eq__(self, other):
         if type(other) is FieldTracker:
@@ -162,14 +164,13 @@ class InstanceTracker(dict):
 new_instance_tracker = InstanceTracker.fromkeys
 
 
-class ModelInstanceTracker(InstanceTracker):
-    __slots__ = ("queryset", "object", "related")
+class ModelInstanceTracker(InstanceTracker, metaclass=LazySlots):
+    __slots__ = ("queryset", "object")
 
-    def __getattr__(self, name):
-        if name == "related":
-            self.related = related = defaultdict(list)
-            return related
-        raise AttributeError
+    def related(self):
+        return defaultdict(list)
+
+    lazy_slots = (related,)
 
     def add_related_instance(self, instance, field, related_model):
         self.related[(field, related_model)].append(instance)

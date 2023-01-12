@@ -1,17 +1,19 @@
 from collections import defaultdict
 from functools import lru_cache
+from linecache import getline
 from sys import _getframe
 
 from django.template import Node
 
 from dj_tracker.constants import IGNORED_MODULES
-from dj_tracker.utils import HashableList, HashableMixin
+from dj_tracker.promise import SourceFilePromise
+from dj_tracker.utils import HashableList, HashableMixin, hash_string
 
 
 class TracebackEntry(HashableMixin):
     instances = defaultdict(dict)
 
-    __slots__ = ("filename", "lineno", "func", "hash_value")
+    __slots__ = ("filename", "lineno", "func")
 
     def __new__(cls, filename, lineno, func=""):
         instances_for_file = cls.instances[filename]
@@ -22,11 +24,29 @@ class TracebackEntry(HashableMixin):
             self.func = func
         return self
 
-    def hash(self):
-        return hash((self.filename, self.lineno))
-
     def __getnewargs__(self):
         return (self.filename, self.lineno, self.func)
+
+    def hash_value(self):
+        return hash((self.filename, self.lineno))
+
+    def code(self):
+        return getline(self.filename, self.lineno).strip()
+
+    def filename_id(self):
+        return SourceFilePromise.get_or_create(name=self.filename)
+
+    def cache_key(self):
+        return hash(
+            (
+                self.filename_id,
+                self.lineno,
+                hash_string(self.code),
+                hash_string(self.func),
+            )
+        )
+
+    lazy_slots = (hash_value, code, filename_id, cache_key)
 
 
 def get_traceback():

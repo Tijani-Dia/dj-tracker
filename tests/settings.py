@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "django-insecure-2p1&(r-6(88=)txivii25r^o%4-&00u5vgs#n93r#t8+y0"
 
-DEBUG = True
+DEBUG = False
 
 INSTALLED_APPS = [
     "dj_tracker",

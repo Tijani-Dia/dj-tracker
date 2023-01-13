@@ -4,19 +4,14 @@ from django.apps import apps
 from django.db.models.base import ModelBase
 from django.db.models.query import BaseIterable
 
+from dj_tracker.hash_utils import HashableCounter, HashableList, hash_string
 from dj_tracker.models import (
     InstanceFieldTracking,
     QuerySetTracking,
     QueryType,
     StackEntry,
 )
-from dj_tracker.utils import (
-    HashableCounter,
-    HashableList,
-    LRUBoundedDict,
-    cached_attribute,
-    hash_string,
-)
+from dj_tracker.utils import LRUBoundedDict, cached_attribute
 
 
 class Promise:

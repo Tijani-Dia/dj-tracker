@@ -11,10 +11,11 @@ from django.utils.timezone import now
 from dj_tracker.collector import Collector
 from dj_tracker.constants import DUMMY_REQUEST, TRACKINGS_DB
 from dj_tracker.context import get_request
+from dj_tracker.hash_utils import HashableCounter, HashableMixin
 from dj_tracker.models import QueryGroup, QuerySetTracking, Tracking
 from dj_tracker.promise import QueryGroupPromise, QueryPromise, RequestPromise
 from dj_tracker.traceback import get_traceback
-from dj_tracker.utils import HashableCounter, HashableMixin, LazySlots, cached_attribute
+from dj_tracker.utils import LazySlots, cached_attribute
 
 weak_reference = weakref.ref
 weakref_finalize = weakref.finalize

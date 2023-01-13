@@ -6,8 +6,8 @@ from sys import _getframe
 from django.template import Node
 
 from dj_tracker.constants import IGNORED_MODULES
+from dj_tracker.hash_utils import HashableList, HashableMixin, hash_string
 from dj_tracker.promise import SourceFilePromise
-from dj_tracker.utils import HashableList, HashableMixin, hash_string
 
 
 class TracebackEntry(HashableMixin):

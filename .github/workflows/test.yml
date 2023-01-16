@@ -43,8 +43,12 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install dependencies
         run: |
-          pip install -e '.[test]'
-          pip install coverage
+          python -m pip install --upgrade pip
+          python -m pip install Cython>=3.0.0a11
+          python -m pip install -e '.[test]'
+          python -m pip install coverage
+        env:
+          TRACE_LINES: true
       - name: Test
         run: |
           coverage run manage.py test

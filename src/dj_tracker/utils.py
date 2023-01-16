@@ -1,5 +1,4 @@
 from collections import OrderedDict
-from functools import partial
 
 
 class cached_attribute:
@@ -27,10 +26,8 @@ class LRUBoundedDict(OrderedDict):
         super().__init__()
         self.maxsize = maxsize
 
-    def get(
-        self, key, default=None, dict_get=dict.get, move_to_end=OrderedDict.move_to_end
-    ):
-        if (value := dict_get(self, key, default)) is not default:
+    def get(self, key, dict_get=dict.get, move_to_end=OrderedDict.move_to_end):
+        if value := dict_get(self, key):
             move_to_end(self, key)
         return value
 
@@ -39,12 +36,12 @@ class LRUBoundedDict(OrderedDict):
         key,
         value,
         len=dict.__len__,
+        odict_popitem=OrderedDict.popitem,
         odict_setitem=OrderedDict.__setitem__,
-        odict_popfirst=partial(OrderedDict.popitem, last=False),
     ):
         odict_setitem(self, key, value)
         if len(self) > self.maxsize:
-            odict_popfirst(self)
+            odict_popitem(self, False)
 
 
 class LazySlots(type):

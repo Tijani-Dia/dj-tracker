@@ -144,13 +144,9 @@ class InstanceTracker(dict):
     def __missing__(self, field):
         return
 
-    def __getitem__(
-        self, field, dict_get_item=dict.__getitem__, dict_set_item=dict.__setitem__
-    ):
+    def __getitem__(self, field, dict_get_item=dict.__getitem__):
         if not (field_tracker := dict_get_item(self, field)):
-            field_tracker = FieldTracker()
-            dict_set_item(self, field, field_tracker)
-
+            self[field] = field_tracker = FieldTracker()
         return field_tracker
 
     get_field_tracker = __getitem__

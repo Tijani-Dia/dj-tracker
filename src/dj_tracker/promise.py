@@ -276,8 +276,7 @@ class TracebackPromise(Promise):
     def set_creation_kwargs(kwargs):
         get_or_create_source_code = SourceCodePromise.get_or_create
         kwargs["stack"] = tuple(
-            get_or_create_source_code(entry=entry)
-            for entry in reversed(kwargs["stack"])
+            get_or_create_source_code(entry=entry) for entry in kwargs["stack"]
         )
         if template_info := kwargs.pop("template_info"):
             kwargs["template_info_id"] = get_or_create_source_code(entry=template_info)
@@ -298,7 +297,7 @@ class TracebackPromise(Promise):
         promise = super().obj_created(cache_key)
         cls.stack_entries.extend(
             StackEntry(traceback_id=cache_key, source_id=source_id, index=index)
-            for index, source_id in enumerate(promise.stack)
+            for index, source_id in enumerate(reversed(promise.stack))
         )
         return promise
 
@@ -509,7 +508,7 @@ class QueryPromise(Promise):
                 model_id,
                 traceback_id,
                 num_instances,
-                hash_string(query_type),
+                hash_string(str(query_type)),
                 depth if depth else 0,
                 field_id if field_id else 0,
                 cache_hits if cache_hits else 0,

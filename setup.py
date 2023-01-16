@@ -1,15 +1,27 @@
+import os
+
 from setuptools import Extension, find_packages, setup
 
+from Cython.Build import cythonize  # isort: skip
+
+
 __version__ = "0.1.3a"
+
+
+TRACE_LINES = os.environ.get("TRACE_LINES")
+
+extensions = [
+    Extension(
+        "*",
+        sources=["src/dj_tracker/*.pyx"],
+        define_macros=[("CYTHON_TRACE", 1 if TRACE_LINES else 0)],
+    ),
+]
+
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-ext_modules = [
-    Extension(
-        "dj_tracker.speedups", sources=["src/dj_tracker/speedups.c"], optional=True
-    )
-]
 
 install_requires = [
     "django>=3.2",
@@ -28,10 +40,6 @@ docs_requires = [
     "mkdocs-material",
 ]
 
-build_requires = [
-    "twine",
-    "check-wheel-contents",
-]
 
 setup(
     name="django-trackings",
@@ -52,11 +60,17 @@ setup(
     extras_require={
         "test": test_requires,
         "docs": docs_requires,
-        "build": build_requires,
     },
     package_dir={"": "src"},
     packages=find_packages("src"),
-    ext_modules=ext_modules,
+    ext_modules=cythonize(
+        extensions,
+        annotate=False,
+        compiler_directives={
+            "language_level": 3,
+            "linetrace": True if TRACE_LINES else False,
+        },
+    ),
     include_package_data=True,
     zip_safe=False,
     license="BSD-3-Clause",

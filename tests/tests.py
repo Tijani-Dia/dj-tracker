@@ -4,6 +4,7 @@ from operator import attrgetter
 
 from django import VERSION as DJANGO_VERSION
 from django.test import TestCase
+from django.urls import reverse
 
 from dj_tracker.datastructures import QuerySetTracker, TrackedDict, TrackedSequence
 from tests.factories import (
@@ -566,3 +567,16 @@ class TestEmptyQueryset(TestCase):
         qs = Book.objects.all()
         self.assertEqual(len(qs), 0)
         self.assertEqual(get_queryset_tracker(qs)["num_instances"], 0)
+
+
+class TestTemplateInfo(TestCase):
+    def test_get_traceback(self):
+        BookFactory()
+        response = self.client.get(reverse("books"))
+
+        qs_tracker = get_queryset_tracker(response.context["books"])
+        self.assertEqual(qs_tracker["num_instances"], 1)
+
+        traceback, template_info = qs_tracker["traceback"]
+        self.assertIn("/tests/templates/tests/books.html", template_info.filename)
+        self.assertEqual(template_info.code, "{% for book in books %}")

@@ -73,5 +73,11 @@ trackingsdb
 /original_images/
 /media/
 
+src/dj_tracker/*.c
+src/dj_tracker/*.html
+cython_debug
+*.prof
+*.lprof
+
 .envrc
 exp.py

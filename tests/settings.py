@@ -59,12 +59,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 STATIC_URL = "/static/"
 
-ROOT_URLCONF = "dj_tracker.urls"
+ROOT_URLCONF = "tests.urls"
 
 AUTH_USER_MODEL = "tests.User"
 
 DJ_TRACKER = {
     "COLLECTION_INTERVAL": 1,
+    "IGNORE_MODULES": {"kernprof", "line_profiler"},
 }
 
 TEST_RUNNER = "dj_tracker.test.DjTrackerRunner"

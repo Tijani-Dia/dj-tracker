@@ -5,7 +5,7 @@ from setuptools import Extension, find_packages, setup
 from Cython.Build import cythonize  # isort: skip
 
 
-__version__ = "0.1.3a"
+__version__ = "0.2.0a0"
 
 
 TRACE_LINES = os.environ.get("TRACE_LINES")

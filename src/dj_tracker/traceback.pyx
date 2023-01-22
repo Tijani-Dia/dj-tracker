@@ -102,9 +102,6 @@ cdef class TracebackEntry:
         self.func = func
         self.ignore = ignore_file(filename)
         self.is_render = func == "render"
-    
-    def __hash__(self):
-        return self.hash_value
 
     @property
     def code(self):

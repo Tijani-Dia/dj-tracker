@@ -170,7 +170,7 @@ class Query(Promisable):
 
     @property
     def average_duration_in_ms(self):
-        return round(self.average_duration * 10e-6, 2)
+        return round(self.average_duration * 1e-6, 2)
 
 
 class QueryGroupManager(models.Manager):

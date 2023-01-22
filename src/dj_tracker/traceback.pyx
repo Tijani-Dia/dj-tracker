@@ -1,3 +1,4 @@
+cimport cython
 from cpython.dict cimport PyDict_GetItemString
 from cpython.object cimport PyObject
 from cpython.pystate cimport PyFrameObject
@@ -28,64 +29,18 @@ cdef extern from "pythoncapi_compat.h":
     PyObject *PyFrame_GetLocals(PyFrameObject*)
 
 
-cpdef get_traceback(dict entries = {}):
-    cdef:
-        PyFrameObject *frame, *last_frame
-        PyCodeObject *code
-        PyObject *f_locals, *node
-        TracebackEntry entry
-        str filename, func
-        bint top_entries_found = False
-        int num_bottom_entries = 0
-        list stack = <list>HashableList()
-        object template_info = None
-
-    if not (last_frame := PyEval_GetFrame()):
-        return (), None
-
-    Py_XINCREF(<PyObject*>last_frame)
-
-    while frame := PyFrame_GetBack(last_frame):
-        Py_XDECREF(<PyObject*>last_frame)
-        last_frame = frame
-
-        code = PyFrame_GetCode(frame)
-        if (entry := entries.get(<Py_ssize_t>code)) is None:
-            entry = entries[<Py_ssize_t>code] = TracebackEntry(
-                <object>code.co_filename,
-                PyFrame_GetLineNumber(frame),
-                <object>code.co_name,
-            )
-        Py_XDECREF(<PyObject*>code)
-
-        if template_info is None and entry.is_render:
-            f_locals = PyFrame_GetLocals(frame)
-            if node := PyDict_GetItemString(<object>f_locals, "self"):
-                obj = <object>node
-                if isinstance(obj, Node):
-                    template_info = TracebackEntry(obj.origin.name, obj.token.lineno)
-            Py_XDECREF(<PyObject*>f_locals)
-
-        if entry.ignore:
-            if top_entries_found:
-                stack.append(entry)
-                num_bottom_entries += 1
-        else:
-            if num_bottom_entries:
-                num_bottom_entries = 0
-            elif not top_entries_found:
-                top_entries_found = True
-
-            stack.append(entry)
-
-    Py_XDECREF(<PyObject*>last_frame)
-
-    if num_bottom_entries:
-        stack[-num_bottom_entries:] = []
-
-    return stack, template_info
+@lru_cache(maxsize=None)
+def ignore_file(filename: str) -> bool:
+    """Indicates whether the frame containing the given filename should be ignored."""
+    return any(module in filename for module in IGNORED_MODULES)
 
 
+@lru_cache(maxsize=512)
+def get_entry(*args) -> TracebackEntry:
+    return TracebackEntry(*args)
+
+
+@cython.freelist(512)
 cdef class TracebackEntry:
     cdef:
         readonly str filename
@@ -132,7 +87,57 @@ cdef class TracebackEntry:
         return f"{self.filename} {self.code}"
 
 
-@lru_cache(maxsize=None)
-def ignore_file(filename: str) -> bool:
-    """Indicates whether the frame containing the given filename should be ignored."""
-    return any(module in filename for module in IGNORED_MODULES)
+cpdef get_traceback(get_entry=get_entry):
+    cdef:
+        PyFrameObject *frame, *last_frame
+        PyCodeObject *code
+        PyObject *f_locals, *node
+        TracebackEntry entry
+        bint top_entries_found = False
+        int num_bottom_entries = 0
+        list stack = <list>HashableList()
+        object template_info = None
+
+    if not (last_frame := PyEval_GetFrame()):
+        return (), None
+
+    Py_XINCREF(<PyObject*>last_frame)
+
+    while frame := PyFrame_GetBack(last_frame):
+        Py_XDECREF(<PyObject*>last_frame)
+        last_frame = frame
+
+        code = PyFrame_GetCode(frame)
+        entry = get_entry(
+            <object>code.co_filename,
+            PyFrame_GetLineNumber(frame),
+            <object>code.co_name,
+        )
+        Py_XDECREF(<PyObject*>code)
+
+        if template_info is None and entry.is_render:
+            f_locals = PyFrame_GetLocals(frame)
+            if node := PyDict_GetItemString(<object>f_locals, "self"):
+                obj = <object>node
+                if isinstance(obj, Node):
+                    template_info = get_entry(obj.origin.name, obj.token.lineno)
+            Py_XDECREF(<PyObject*>f_locals)
+
+        if entry.ignore:
+            if top_entries_found:
+                stack.append(entry)
+                num_bottom_entries += 1
+        else:
+            if num_bottom_entries:
+                num_bottom_entries = 0
+            elif not top_entries_found:
+                top_entries_found = True
+
+            stack.append(entry)
+
+    Py_XDECREF(<PyObject*>last_frame)
+
+    if num_bottom_entries:
+        stack[-num_bottom_entries:] = []
+
+    return stack, template_info

@@ -3,8 +3,11 @@ import threading
 from functools import lru_cache, partial, wraps
 from time import perf_counter_ns
 
+from django.core import signals
+from django.core.handlers import asgi, wsgi
 from django.db import connection
 from django.db.models import query
+from django.utils.functional import cached_property
 
 from dj_tracker.collector import Collector
 from dj_tracker.constants import (
@@ -18,6 +21,7 @@ from dj_tracker.constants import (
 from dj_tracker.context import get_request, set_request
 from dj_tracker.datastructures import (
     QuerySetTracker,
+    RequestTracker,
     TrackedResultCache,
     new_model_instance_tracker,
 )
@@ -81,7 +85,7 @@ def patch_queryset_method(method, query_type):
         if (
             queryset._result_cache is None
             and model_is_tracked(queryset.model)
-            and not ignore_path(get_request().path)
+            and not get_request()._ignore_path
         ):
             qs_tracker = QuerySetTracker(queryset, query_type)
 
@@ -136,7 +140,7 @@ def track_instances(Iterable, track_attributes_accessed, instance_tracker):
         qs = self.queryset
         model = qs.model
 
-        if not model_is_tracked(model) or ignore_path(get_request().path):
+        if not model_is_tracked(model) or get_request()._ignore_path:
             yield from iterate(self)
             return
 
@@ -203,31 +207,40 @@ def execute_wrapper(execute, sql, params, many, context, *, qs_tracker):
 
 
 def patch_requests():
-    from django.core.handlers import asgi, wsgi
-    from django.core.signals import request_finished
-
-    send_request_finished = request_finished.send
-
-    def init_request_wrapper(init_request):
-        @wraps(init_request)
-        def __init__(request, *args):
-            init_request(request, *args)
+    def patch_init(init):
+        @wraps(init)
+        def wrapper(request, *args):
+            init(request, *args)
+            request._ignore_path = ignore_path(request.path)
             set_request(request)
 
-        return __init__
+        return wrapper
 
-    @wraps(send_request_finished)
-    def req_finished(sender, **named):
-        result = send_request_finished(sender, **named)
-        if tracker := getattr(get_request(), "_tracker", None):
-            tracker.request_finished()
+    def patch_send(send):
+        @wraps(send)
+        def wrapper(sender, **named):
+            try:
+                return send(sender, **named)
+            finally:
+                set_request(DUMMY_REQUEST)
 
-        set_request(DUMMY_REQUEST)
-        return result
+        return wrapper
 
-    wsgi.WSGIRequest.__init__ = init_request_wrapper(wsgi.WSGIRequest.__init__)
-    asgi.ASGIRequest.__init__ = init_request_wrapper(asgi.ASGIRequest.__init__)
-    request_finished.send = req_finished
+    @cached_property
+    def get_tracker(request):
+        return RequestTracker(request)
+
+    # Patch `__init__`.
+    wsgi.WSGIRequest.__init__ = patch_init(wsgi.WSGIRequest.__init__)
+    asgi.ASGIRequest.__init__ = patch_init(asgi.ASGIRequest.__init__)
+
+    # Patch `request_finished` signal.
+    signals.request_finished.send = patch_send(signals.request_finished.send)
+
+    # Add cached_property `_tracker` to requests classes.
+    wsgi.WSGIRequest._tracker = asgi.ASGIRequest._tracker = get_tracker
+    get_tracker.__set_name__(wsgi.WSGIRequest, "_tracker")
+    get_tracker.__set_name__(asgi.ASGIRequest, "_tracker")
 
 
 def patch_getattr():

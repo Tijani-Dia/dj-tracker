@@ -117,4 +117,4 @@ def _get_stopping():
 
 
 def _get_dummy_request():
-    return type("DummyRequest", (), {"path": ""})
+    return type("DummyRequest", (), {"path": "", "_ignore_path": False})

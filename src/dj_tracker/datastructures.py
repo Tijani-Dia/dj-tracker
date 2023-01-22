@@ -210,6 +210,7 @@ class RequestTracker:
         self.num_queries = self.num_queries_saved = 0
         self.finished = False
         Collector.add_request(self)
+        weakref_finalize(request, self.request_finished)
 
     def add_query(self, query_id):
         self.queries[query_id] += 1
@@ -368,7 +369,8 @@ class QuerySetTracker(dict):
                 self["field"] = type(instance), field
 
         if (request := get_request()) is not DUMMY_REQUEST:
-            self.request_tracker = get_request_tracker(request)
+            self.request_tracker = request._tracker
+            self.request_tracker.num_queries += 1
         else:
             self.request_tracker = DummyRequestTracker
 
@@ -497,11 +499,3 @@ class QuerySetTracker(dict):
 
     def __hash__(self):
         return id(self)
-
-
-def get_request_tracker(request):
-    if not (tracker := getattr(request, "_tracker", None)):
-        tracker = request._tracker = RequestTracker(request)
-
-    tracker.num_queries += 1
-    return tracker

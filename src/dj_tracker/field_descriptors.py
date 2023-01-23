@@ -9,14 +9,13 @@ class FieldDescriptor:
         self.attname = attname
 
     def __get__(self, instance, cls):
-        if instance is not None:
-            value = self.descriptor.__get__(instance, cls)
-            if instance_tracker := getattr(instance, "_tracker", None):
-                instance_tracker.get_field_tracker(self.attname).get += 1
+        if instance is None:
+            return self.descriptor
 
-            return value
+        if instance_tracker := getattr(instance, "_tracker", None):
+            instance_tracker.get_field_tracker(self.attname).get += 1
 
-        return self.descriptor
+        return self.descriptor.__get__(instance, cls)
 
 
 class DeferredAttributeDescriptor(FieldDescriptor):

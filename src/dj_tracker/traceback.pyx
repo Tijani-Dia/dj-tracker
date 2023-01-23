@@ -1,7 +1,6 @@
 cimport cython
 from cpython.object cimport PyObject
 from cpython.pystate cimport PyFrameObject
-from cpython.ref cimport Py_XDECREF, Py_XINCREF
 
 from functools import lru_cache
 from linecache import getline
@@ -14,8 +13,11 @@ from dj_tracker.promise import SourceFilePromise
 
 
 cdef extern from "Python.h":
+    void Py_INCREF(PyObject*)
+    void Py_DECREF(PyObject*)
+
     ctypedef struct PyCodeObject:
-        PyObject* co_filename
+        PyObject *co_filename
         PyObject *co_name
 
     PyFrameObject *PyEval_GetFrame()
@@ -101,10 +103,10 @@ cpdef get_traceback(get_entry=get_entry):
     if not (last_frame := PyEval_GetFrame()):
         return (), None
 
-    Py_XINCREF(<PyObject*>last_frame)
+    Py_INCREF(<PyObject*>last_frame)
 
     while frame := PyFrame_GetBack(last_frame):
-        Py_XDECREF(<PyObject*>last_frame)
+        Py_DECREF(<PyObject*>last_frame)
         last_frame = frame
 
         code = PyFrame_GetCode(frame)
@@ -113,7 +115,7 @@ cpdef get_traceback(get_entry=get_entry):
             PyFrame_GetLineNumber(frame),
             <object>code.co_name,
         )
-        Py_XDECREF(<PyObject*>code)
+        Py_DECREF(<PyObject*>code)
 
         if template_info is None and entry.is_render:
             try:
@@ -124,7 +126,7 @@ cpdef get_traceback(get_entry=get_entry):
                 node_obj = <object>node
                 if isinstance(node_obj, Node):
                     template_info = get_entry(node_obj.origin.name, node_obj.token.lineno)
-                Py_XDECREF(node)
+                Py_DECREF(node)
 
         if entry.ignore:
             if top_entries_found:
@@ -138,7 +140,7 @@ cpdef get_traceback(get_entry=get_entry):
 
             stack.append(entry)
 
-    Py_XDECREF(<PyObject*>last_frame)
+    Py_DECREF(<PyObject*>last_frame)
 
     if num_bottom_entries:
         stack[-num_bottom_entries:] = []

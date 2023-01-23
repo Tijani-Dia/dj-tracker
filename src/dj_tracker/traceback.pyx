@@ -1,5 +1,4 @@
 cimport cython
-from cpython.dict cimport PyDict_GetItemString
 from cpython.object cimport PyObject
 from cpython.pystate cimport PyFrameObject
 from cpython.ref cimport Py_XDECREF, Py_XINCREF
@@ -26,7 +25,7 @@ cdef extern from "Python.h":
 cdef extern from "pythoncapi_compat.h":
     PyFrameObject *PyFrame_GetBack(PyFrameObject*)
     PyCodeObject *PyFrame_GetCode(PyFrameObject*)
-    PyObject *PyFrame_GetLocals(PyFrameObject*)
+    PyObject *PyFrame_GetVar(PyFrameObject*, PyObject*)
 
 
 @lru_cache(maxsize=None)
@@ -91,8 +90,9 @@ cpdef get_traceback(get_entry=get_entry):
     cdef:
         PyFrameObject *frame, *last_frame
         PyCodeObject *code
-        PyObject *f_locals, *node
+        PyObject *node
         TracebackEntry entry
+        str self_var = "self"
         bint top_entries_found = False
         int num_bottom_entries = 0
         list stack = <list>HashableList()
@@ -116,12 +116,15 @@ cpdef get_traceback(get_entry=get_entry):
         Py_XDECREF(<PyObject*>code)
 
         if template_info is None and entry.is_render:
-            f_locals = PyFrame_GetLocals(frame)
-            if node := PyDict_GetItemString(<object>f_locals, "self"):
-                obj = <object>node
-                if isinstance(obj, Node):
-                    template_info = get_entry(obj.origin.name, obj.token.lineno)
-            Py_XDECREF(<PyObject*>f_locals)
+            try:
+                node = PyFrame_GetVar(frame, <PyObject*>self_var)
+            except NameError:
+                pass
+            else:
+                node_obj = <object>node
+                if isinstance(node_obj, Node):
+                    template_info = get_entry(node_obj.origin.name, node_obj.token.lineno)
+                Py_XDECREF(node)
 
         if entry.ignore:
             if top_entries_found:

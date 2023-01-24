@@ -4,6 +4,7 @@ from django.apps import apps
 from django.db.models.base import ModelBase
 from django.db.models.query import BaseIterable
 
+from dj_tracker.cache_utils import LRUCache, cached_attribute
 from dj_tracker.hash_utils import HashableCounter, HashableList, hash_string
 from dj_tracker.models import (
     InstanceFieldTracking,
@@ -11,7 +12,6 @@ from dj_tracker.models import (
     QueryType,
     StackEntry,
 )
-from dj_tracker.utils import LRUBoundedDict, cached_attribute
 
 
 class Promise:
@@ -33,18 +33,19 @@ class Promise:
         get_in_memory_key = cls.get_in_memory_key
         set_creation_kwargs = getattr(cls, "set_creation_kwargs", None)
 
-        cache = LRUBoundedDict(maxsize=cache_size)
-        get_cached = cache.get
+        cache = LRUCache(maxsize=cache_size)
+        cache_get = cache.get
+        cache_set = cache.set
 
         def get_or_create(**kwargs):
             in_memory_key = get_in_memory_key(**kwargs)
-            if not (cache_key := get_cached(in_memory_key)):
+            if not (cache_key := cache_get(in_memory_key)):
                 if set_creation_kwargs:
                     set_creation_kwargs(kwargs)
                 if (cache_key := get_cache_key(**kwargs)) not in to_resolve:
                     to_resolve[cache_key] = cls(cache_key, kwargs)
 
-                cache[in_memory_key] = cache_key
+                cache_set(in_memory_key, cache_key)
 
             return cache_key
 

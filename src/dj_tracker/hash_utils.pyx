@@ -1,6 +1,6 @@
 from collections import Counter
 
-from dj_tracker.utils import LazySlots
+from dj_tracker.cache_utils import LazySlots
 
 
 class HashableMixin(metaclass=LazySlots):

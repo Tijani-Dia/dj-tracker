@@ -1,6 +1,6 @@
 from django.apps import apps
 
-from dj_tracker.utils import cached_attribute
+from dj_tracker.cache_utils import cached_attribute
 
 
 class DjTrackerRouter:

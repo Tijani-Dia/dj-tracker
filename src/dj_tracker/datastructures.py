@@ -226,8 +226,8 @@ class RequestTracker:
     def ready(self):
         return self.finished and self.num_queries == self.num_queries_saved
 
-    @classmethod
-    def save_trackers(cls, trackers):
+    @staticmethod
+    def save_trackers(trackers):
         get_or_create_request = RequestPromise.get_or_create
         get_or_create_query_group = QueryGroupPromise.get_or_create
 
@@ -484,8 +484,8 @@ class QuerySetTracker(dict):
 
         self.request_tracker.add_query(query_id)
 
-    @classmethod
-    def save_trackers(cls, trackers):
+    @staticmethod
+    def save_trackers(trackers):
         deque((tracker.save() for tracker in trackers), maxlen=0)
         QueryPromise.resolve()
         return len(trackers)

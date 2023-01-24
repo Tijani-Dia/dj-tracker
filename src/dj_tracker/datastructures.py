@@ -189,26 +189,25 @@ new_model_instance_tracker = ModelInstanceTracker.fromkeys
 
 class RequestTracker:
     __slots__ = (
-        "path",
-        "method",
-        "content_type",
-        "query_string",
+        "request_info",
         "started_at",
+        "finished",
         "queries",
         "num_queries",
         "num_queries_saved",
-        "finished",
     )
 
     def __init__(self, request):
-        self.path = request.path
-        self.method = request.method
-        self.content_type = request.content_type
-        self.query_string = request.META.get("QUERY_STRING", "")
+        self.request_info = {
+            "path": request.path,
+            "method": request.method,
+            "content_type": request.content_type,
+            "query_string": request.META.get("QUERY_STRING", ""),
+        }
         self.started_at = now()
+        self.finished = False
         self.queries = HashableCounter()
         self.num_queries = self.num_queries_saved = 0
-        self.finished = False
         Collector.add_request(self)
         weakref_finalize(request, self.request_finished)
 
@@ -235,17 +234,11 @@ class RequestTracker:
         trackings = tuple(
             Tracking(
                 started_at=tracker.started_at,
-                request_id=get_or_create_request(
-                    path=tracker.path,
-                    method=tracker.method,
-                    content_type=tracker.content_type,
-                    query_string=tracker.query_string,
-                ),
+                request_id=get_or_create_request(**tracker.request_info),
                 query_group_id=get_or_create_query_group(queries=tracker.queries),
             )
             for tracker in trackers
         )
-
         RequestPromise.resolve()
         QueryGroupPromise.resolve()
         return len(Tracking.objects.bulk_create(trackings))

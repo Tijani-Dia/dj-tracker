@@ -44,7 +44,7 @@ docs_requires = [
 setup(
     name="django-trackings",
     version=__version__,
-    description="A Django app that tracks your queries and helps optimizing them.",
+    description="A Django app that tracks your queries to help optimize them.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Tidiane Dia",

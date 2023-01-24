@@ -3,12 +3,12 @@ import os
 from setuptools import Extension, find_packages, setup
 
 from Cython.Build import cythonize  # isort: skip
-
-
-__version__ = "0.2.0a1"
+from Cython.Compiler import Options  # isort: skip
 
 
 TRACE_LINES = os.getenv("TRACE_LINES")
+
+Options.cimport_from_pyx = True
 
 extensions = [
     Extension(
@@ -43,7 +43,7 @@ docs_requires = [
 
 setup(
     name="django-trackings",
-    version=__version__,
+    version="0.2.0a1",
     description="A Django app that tracks your queries to help optimize them.",
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -7,6 +7,8 @@ from linecache import getline
 
 from django.template import Node
 
+from dj_tracker.cache_utils cimport LRUCache
+
 from dj_tracker.constants import IGNORED_MODULES
 from dj_tracker.hash_utils import HashableList, hash_string
 from dj_tracker.promise import SourceFilePromise
@@ -28,17 +30,6 @@ cdef extern from "pythoncapi_compat.h":
     PyFrameObject *PyFrame_GetBack(PyFrameObject*)
     PyCodeObject *PyFrame_GetCode(PyFrameObject*)
     PyObject *PyFrame_GetVar(PyFrameObject*, PyObject*)
-
-
-@lru_cache(maxsize=None)
-def ignore_file(filename: str) -> bool:
-    """Indicates whether the frame containing the given filename should be ignored."""
-    return any(module in filename for module in IGNORED_MODULES)
-
-
-@lru_cache(maxsize=512)
-def get_entry(*args) -> TracebackEntry:
-    return TracebackEntry(*args)
 
 
 @cython.freelist(512)
@@ -88,7 +79,23 @@ cdef class TracebackEntry:
         return f"{self.filename} {self.code}"
 
 
-cpdef get_traceback(get_entry=get_entry):
+cdef inline TracebackEntry get_entry(
+    str filename,
+    object lineno,
+    PyCodeObject *code = NULL,
+    LRUCache entries = LRUCache(maxsize=512)
+):
+    cdef TracebackEntry entry
+
+    cache_key = filename, lineno
+    if (entry := entries.get(cache_key)) is None:
+        entry = TracebackEntry(filename, lineno, <object>code.co_name if code else "")
+        entries.set(cache_key, entry)
+
+    return entry
+
+
+cpdef get_traceback():
     cdef:
         PyFrameObject *frame, *last_frame
         PyCodeObject *code
@@ -110,11 +117,7 @@ cpdef get_traceback(get_entry=get_entry):
         last_frame = frame
 
         code = PyFrame_GetCode(frame)
-        entry = get_entry(
-            <object>code.co_filename,
-            PyFrame_GetLineNumber(frame),
-            <object>code.co_name,
-        )
+        entry = get_entry(<object>code.co_filename, PyFrame_GetLineNumber(frame), code)
         Py_DECREF(<PyObject*>code)
 
         if template_info is None and entry.is_render:
@@ -146,3 +149,9 @@ cpdef get_traceback(get_entry=get_entry):
         stack[-num_bottom_entries:] = []
 
     return stack, template_info
+
+
+@lru_cache(maxsize=None)
+def ignore_file(filename: str) -> bool:
+    """Indicates whether the frame containing the given filename should be ignored."""
+    return any(module in filename for module in IGNORED_MODULES)

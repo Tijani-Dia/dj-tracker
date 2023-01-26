@@ -2,7 +2,8 @@ cimport cython
 from cpython.object cimport PyObject
 from cpython.pystate cimport PyFrameObject
 
-from functools import lru_cache
+import os
+import sys
 from linecache import getline
 
 from django.template import Node
@@ -29,6 +30,7 @@ cdef extern from "Python.h":
 cdef extern from "pythoncapi_compat.h":
     PyFrameObject *PyFrame_GetBack(PyFrameObject*)
     PyCodeObject *PyFrame_GetCode(PyFrameObject*)
+    PyObject *PyFrame_GetGlobals(PyFrameObject*)
     PyObject *PyFrame_GetVar(PyFrameObject*, PyObject*)
 
 
@@ -36,27 +38,30 @@ cdef extern from "pythoncapi_compat.h":
 cdef class TracebackEntry:
     cdef:
         readonly str filename
+        readonly str rel_path
         readonly int lineno
         readonly str func
 
-        int hash_value
         bint ignore
         bint is_render
 
-    def __init__(self, str filename, int lineno, str func=""):
+        int hash_value
+
+    def __init__(self, str filename, str rel_path, bint ignore, int lineno, str func):
         self.filename = filename
+        self.rel_path = rel_path
+        self.ignore = ignore
         self.lineno = lineno
         self.func = func
-        self.ignore = ignore_file(filename)
         self.is_render = func == "render"
+
+    @property
+    def filename_id(self):
+        return SourceFilePromise.get_or_create(name=self.rel_path)
 
     @property
     def code(self):
         return getline(self.filename, self.lineno).strip()
-
-    @property
-    def filename_id(self):
-        return SourceFilePromise.get_or_create(name=self.filename)
 
     @property
     def cache_key(self):
@@ -71,26 +76,65 @@ cdef class TracebackEntry:
     
     def __getattr__(self, name):
         if name == "hash_value":
-            self.hash_value = hash_value = hash((self.filename, self.lineno))
-            return hash_value
-        raise AttributeError
+            self.hash_value = hash((self.rel_path, self.lineno))
+            return self.hash_value
 
-    def __repr__(self):
-        return f"{self.filename} {self.code}"
+        raise AttributeError(name)
+
+
+cdef tuple get_file_info(str filename, PyFrameObject *frame, dict cache = {}):
+    """Retrieves the relative path for a filename and indicates if it should be ignored."""
+
+    cdef:
+        str rel_path
+        bint ignore
+
+    if (file_info := cache.get(filename)) is None:
+        try:
+            module_dir = next(path for path in sys.path if filename.startswith(path))
+        except StopIteration:
+            # The following logic is inspired from:
+            # https://github.com/scoutapp/scout_apm_python/blob/master/src/scout_apm/core/backtrace.py#L29
+            f_globals = PyFrame_GetGlobals(frame)
+            module = (<dict>f_globals).get("__name__", "")
+            Py_DECREF(f_globals)
+
+            if (root_module := sys.modules.get(module.split(".", 1)[0])) is not None:
+                if module_path := root_module.__file__:
+                    module_dir = module_path.rsplit(os.sep, 2)[0]
+                elif (module_path := root_module.__path__) and isinstance(module_path, (list, tuple)):
+                    module_dir = module_path[0].rsplit(os.sep, 1)[0]
+            else:
+                # Fall back to current working directory.
+                module_dir = os.getcwd()
+
+        rel_path = os.path.relpath(filename, module_dir)
+        ignore = any(module in filename for module in IGNORED_MODULES)
+        cache[filename] = file_info = rel_path, ignore
+
+    return file_info
 
 
 cdef inline TracebackEntry get_entry(
     str filename,
     object lineno,
+    PyFrameObject *frame,
     PyCodeObject *code = NULL,
-    LRUCache entries = LRUCache(maxsize=512)
+    LRUCache cache = LRUCache(maxsize=512)
 ):
-    cdef TracebackEntry entry
+    cdef:
+        TracebackEntry entry
+        PyObject *f_globals
 
     cache_key = filename, lineno
-    if (entry := entries.get(cache_key)) is None:
-        entry = TracebackEntry(filename, lineno, <object>code.co_name if code else "")
-        entries.set(cache_key, entry)
+    if (entry := cache.get(cache_key)) is None:
+        entry = TracebackEntry(
+            filename,
+            *get_file_info(filename, frame),
+            lineno,
+            <object>code.co_name if code else "",
+        )
+        cache.set(cache_key, entry)
 
     return entry
 
@@ -117,7 +161,7 @@ cpdef get_traceback():
         last_frame = frame
 
         code = PyFrame_GetCode(frame)
-        entry = get_entry(<object>code.co_filename, PyFrame_GetLineNumber(frame), code)
+        entry = get_entry(<object>code.co_filename, PyFrame_GetLineNumber(frame), frame, code)
         Py_DECREF(<PyObject*>code)
 
         if template_info is None and entry.is_render:
@@ -128,7 +172,7 @@ cpdef get_traceback():
             else:
                 node_obj = <object>node
                 if isinstance(node_obj, Node):
-                    template_info = get_entry(node_obj.origin.name, node_obj.token.lineno)
+                    template_info = get_entry(node_obj.origin.name, node_obj.token.lineno, frame)
                 Py_DECREF(node)
 
         if entry.ignore:
@@ -149,9 +193,3 @@ cpdef get_traceback():
         stack[-num_bottom_entries:] = []
 
     return stack, template_info
-
-
-@lru_cache(maxsize=None)
-def ignore_file(filename: str) -> bool:
-    """Indicates whether the frame containing the given filename should be ignored."""
-    return any(module in filename for module in IGNORED_MODULES)

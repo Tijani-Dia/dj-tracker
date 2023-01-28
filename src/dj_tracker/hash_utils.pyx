@@ -1,3 +1,5 @@
+# cython: c_string_type=str, c_string_encoding=default
+
 from collections import Counter
 
 from dj_tracker.cache_utils import LazySlots
@@ -25,11 +27,11 @@ class HashableCounter(HashableMixin, Counter):
 
 
 cpdef int hash_string(str string):
+    # djb2: http://www.cse.yorku.ca/~oz/hash.html.
     cdef:
-        int i, n = len(string)
+        size_t i, n = len(string)
         unsigned long hash_value = 5381
-        bytes as_bytes = string.encode('UTF-8')
-        const unsigned char* as_c_string = as_bytes
+        const unsigned char *as_c_string = string
 
     for i in range(n):
         hash_value += (hash_value << 5) + as_c_string[i]
@@ -38,8 +40,10 @@ cpdef int hash_string(str string):
 
 
 cdef int hash_list(list l):
+    # See section on list hashing:
+    # https://docs.python.org/3/faq/design.html#how-are-dictionaries-implemented-in-cpython.
     cdef:
-        int i, n = len(l)
+        size_t i, n = len(l)
         unsigned long hash_value = 98767 - n * 555
 
     for i in range(n):
@@ -50,10 +54,9 @@ cdef int hash_list(list l):
 
 cdef int hash_counter(dict counter):
     cdef:
-        int value, i, n = len(counter)
-        unsigned long hash_value = 98767 - n * 555
+        size_t i, n = len(counter)
+        unsigned long value, hash_value = 98767 - n * 555
         list keys = sorted(counter)
-        object key
 
     for i in range(n):
         key = keys[i]

@@ -2,24 +2,37 @@ from cpython.dict cimport PyDict_Next
 from cpython.object cimport PyObject
 
 
-class cached_attribute:
-    """
-    This is similar to `cached_property` but for classes rather than class instances.
-    """
+cdef class LRUCache:
+    cdef:
+        dict cache
+        readonly int maxsize
 
-    def __init__(self, func):
-        self.func = func
+    def __cinit__(self, int maxsize=256):
+        self.cache = {}
+        self.maxsize = maxsize
 
-    def __set_name__(self, owner, name):
-        self.name = name
+    cpdef get(self, key):
+        if (value := self.cache.pop(key, None)) is not None:
+            self.cache[key] = value
+            return value
+    
+    cpdef void set(self, key, value):
+        cdef:
+            PyObject *lru_key
+            Py_ssize_t pos = 0
+            dict cache = self.cache
 
-    def __get__(self, instance, cls):
-        if not cls:
-            cls = type(instance)
+        if len(cache) == self.maxsize:
+            PyDict_Next(cache, &pos, &lru_key, NULL)
+            del cache[<object>lru_key]
 
-        result = self.func(cls)
-        setattr(cls, self.name, result)
-        return result
+        cache[key] = value
+    
+    def __len__(self):
+        return len(self.cache)
+
+    def __repr__(self):
+        return f"LRUCache({self.cache})"
 
 
 class LazySlots(type):
@@ -47,34 +60,21 @@ class LazySlots(type):
         return super().__new__(cls, name, bases, namespace, **kwargs)
 
 
-cdef class LRUCache:
-    cdef:
-        dict cache
-        int maxsize
+class cached_attribute:
+    """
+    This is similar to `cached_property` but for classes rather than class instances.
+    """
 
-    def __cinit__(self, int maxsize=256):
-        self.cache = {}
-        self.maxsize = maxsize
+    def __init__(self, func):
+        self.func = func
 
-    cpdef get(self, key):
-        if (value := self.cache.pop(key, None)) is not None:
-            self.cache[key] = value
-            return value
-    
-    cpdef set(self, key, value):
-        cdef:
-            PyObject *lru_key
-            Py_ssize_t pos = 0
-            dict cache = self.cache
+    def __set_name__(self, owner, name):
+        self.name = name
 
-        if len(cache) == self.maxsize:
-            PyDict_Next(cache, &pos, &lru_key, NULL)
-            del cache[<object>lru_key]
+    def __get__(self, instance, cls):
+        if not cls:
+            cls = type(instance)
 
-        cache[key] = value
-    
-    def __len__(self):
-        return len(self.cache)
-
-    def __repr__(self):
-        return f"LRUCache({self.cache})"
+        result = self.func(cls)
+        setattr(cls, self.name, result)
+        return result

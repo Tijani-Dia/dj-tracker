@@ -6,7 +6,7 @@ All `dj_tracker` settings must be defined in a dictionary named `DJ_TRACKER` in 
 
 ### `APPS_TO_EXCLUDE`
 
-By default, `dj_tracker` tracks all models in all apps except from `dj_tracker` itself and the `sessions` app.
+By default, `dj_tracker` tracks all models in all apps except from `dj_tracker` itself.
 You can add additionnal apps to exclude with this setting:
 
 ```python

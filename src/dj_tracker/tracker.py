@@ -34,16 +34,6 @@ _worker_thread = None
 _lock = threading.Lock()
 
 
-@lru_cache
-def model_is_tracked(model):
-    return model in TRACKED_MODELS
-
-
-@lru_cache
-def ignore_path(path):
-    return any(component in path for component in IGNORED_PATHS)
-
-
 class FromDBDescriptor:
     __slots__ = ("model", "__func__")
 
@@ -79,12 +69,17 @@ class ResultCacheDescriptor:
         queryset.__dict__["_result_cache"] = value
 
 
+def execute_wrapper(execute, sql, params, many, context, *, qs_tracker):
+    qs_tracker["sql"] = sql
+    return execute(sql, params, many, context)
+
+
 def patch_queryset_method(method, query_type):
     @wraps(method)
     def wrapper(queryset):
         if (
             queryset._result_cache is None
-            and model_is_tracked(queryset.model)
+            and queryset.model in TRACKED_MODELS
             and not get_request()._ignore_path
         ):
             qs_tracker = QuerySetTracker(queryset, query_type)
@@ -106,30 +101,6 @@ def patch_queryset_method(method, query_type):
     return wrapper
 
 
-def patch_iterator(iterate):
-    @wraps(iterate)
-    def wrapper(queryset, *args):
-        yield from iterate(queryset, *args)
-        if qs_tracker := getattr(queryset, "_tracker", None):
-            qs_tracker.result_cache_collected()
-
-    return wrapper
-
-
-def contains_patch(queryset, obj):
-    queryset._fetch_all()
-    return obj in queryset._result_cache
-
-
-def wrap_local_setter(local_setter, field, related_model):
-    def wrapper(from_obj, obj):
-        local_setter(from_obj, obj)
-        if obj is not None:
-            from_obj._tracker.add_related_instance(obj, field, related_model)
-
-    return wrapper
-
-
 def track_instances(Iterable, track_attributes_accessed, instance_tracker):
     assert not hasattr(Iterable, "__patched")
     iterate = Iterable.__iter__
@@ -140,7 +111,7 @@ def track_instances(Iterable, track_attributes_accessed, instance_tracker):
         qs = self.queryset
         model = qs.model
 
-        if not model_is_tracked(model) or get_request()._ignore_path:
+        if model not in TRACKED_MODELS or get_request()._ignore_path:
             yield from iterate(self)
             return
 
@@ -162,6 +133,32 @@ def track_instances(Iterable, track_attributes_accessed, instance_tracker):
     Iterable.__iter__ = __iter__
 
 
+def patch_iterables():
+    for Iterable, track_attributes_accessed, instance_tracker in (
+        (query.ModelIterable, TRACK_ATTRIBUTES_ACCESSED, "track_model_instance"),
+        (query.ValuesIterable, False, "track_dict"),
+        (query.ValuesListIterable, False, "track_sequence"),
+        (query.FlatValuesListIterable, False, "track_instance"),
+    ):
+        track_instances(Iterable, track_attributes_accessed, instance_tracker)
+        Iterable.__patched = True
+
+
+def patch_iterator(iterate):
+    @wraps(iterate)
+    def wrapper(queryset, *args):
+        yield from iterate(queryset, *args)
+        if qs_tracker := getattr(queryset, "_tracker", None):
+            qs_tracker.result_cache_collected()
+
+    return wrapper
+
+
+def contains_patch(queryset, obj):
+    queryset._fetch_all()
+    return obj in queryset._result_cache
+
+
 def patch_queryset():
     QuerySet = query.QuerySet
     assert not hasattr(QuerySet, "__patched")
@@ -174,15 +171,13 @@ def patch_queryset():
     QuerySet.__patched = True
 
 
-def patch_iterables():
-    for Iterable, track_attributes_accessed, instance_tracker in (
-        (query.ModelIterable, TRACK_ATTRIBUTES_ACCESSED, "track_model_instance"),
-        (query.ValuesIterable, False, "track_dict"),
-        (query.ValuesListIterable, False, "track_sequence"),
-        (query.FlatValuesListIterable, False, "track_instance"),
-    ):
-        track_instances(Iterable, track_attributes_accessed, instance_tracker)
-        Iterable.__patched = True
+def wrap_local_setter(local_setter, field, related_model):
+    def wrapper(from_obj, obj):
+        local_setter(from_obj, obj)
+        if obj is not None:
+            from_obj._tracker.add_related_instance(obj, field, related_model)
+
+    return wrapper
 
 
 def patch_rel_populator():
@@ -190,8 +185,7 @@ def patch_rel_populator():
 
     @wraps(init)
     def wrapper(self, klass_info, *args):
-        model = klass_info["model"]
-        if model_is_tracked(model):
+        if (model := klass_info["model"]) in TRACKED_MODELS:
             klass_info["local_setter"] = wrap_local_setter(
                 klass_info["local_setter"], klass_info["field"].name, model
             )
@@ -201,12 +195,11 @@ def patch_rel_populator():
     query.RelatedPopulator.__init__ = wrapper
 
 
-def execute_wrapper(execute, sql, params, many, context, *, qs_tracker):
-    qs_tracker["sql"] = sql
-    return execute(sql, params, many, context)
-
-
 def patch_requests():
+    @lru_cache
+    def ignore_path(path):
+        return any(component in path for component in IGNORED_PATHS)
+
     def patch_init(init):
         @wraps(init)
         def wrapper(request, *args):

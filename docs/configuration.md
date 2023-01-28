@@ -105,5 +105,5 @@ DATABASE_ROUTERS = [
 Run the migrations for the `trackings` database:
 
 ```shell
-python manage.py migrate --database=trackings
+python manage.py migrate dj_tracker --database=trackings
 ```

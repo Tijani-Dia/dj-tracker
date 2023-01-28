@@ -48,10 +48,10 @@ urlpatterns = [
 
 ## Run migrations
 
-Run the migrations:
+Run the migrations for the `dj_tracker` app:
 
 ```shell
-python manage.py migrate
+python manage.py migrate dj_tracker
 ```
 
 ## There we go

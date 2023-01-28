@@ -202,7 +202,7 @@ def patch_rel_populator():
 
 
 def execute_wrapper(execute, sql, params, many, context, *, qs_tracker):
-    qs_tracker["sql"] = sql % params
+    qs_tracker["sql"] = sql
     return execute(sql, params, many, context)
 
 

@@ -44,11 +44,7 @@ def _get_tracked_models():
     from django.apps import apps
 
     _set_dj_tracker_settings()
-    apps_to_exclude = {
-        "dj_tracker",
-        "sessions",
-        *DJ_TRACKER_SETTINGS.pop("APPS_TO_EXCLUDE"),
-    }
+    apps_to_exclude = {"dj_tracker", *DJ_TRACKER_SETTINGS.pop("APPS_TO_EXCLUDE")}
     return frozenset(
         chain.from_iterable(
             app.get_models(include_auto_created=True)

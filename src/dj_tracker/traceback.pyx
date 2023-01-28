@@ -84,12 +84,13 @@ cdef class TracebackEntry:
 
 cdef tuple get_file_info(str filename, PyFrameObject *frame, dict cache = {}):
     """Retrieves the relative path for a filename and indicates if it should be ignored."""
-
     cdef:
         str rel_path
         bint ignore
 
-    if (file_info := cache.get(filename)) is None:
+    try:
+        return cache[filename]
+    except KeyError:
         try:
             module_dir = next(path for path in sys.path if filename.startswith(path))
         except StopIteration:
@@ -111,8 +112,7 @@ cdef tuple get_file_info(str filename, PyFrameObject *frame, dict cache = {}):
         rel_path = os.path.relpath(filename, module_dir)
         ignore = any(module in filename for module in IGNORED_MODULES)
         cache[filename] = file_info = rel_path, ignore
-
-    return file_info
+        return file_info
 
 
 cdef inline TracebackEntry get_entry(
@@ -122,11 +122,9 @@ cdef inline TracebackEntry get_entry(
     PyCodeObject *code = NULL,
     LRUCache cache = LRUCache(maxsize=512)
 ):
-    cdef:
-        TracebackEntry entry
-        PyObject *f_globals
-
+    cdef TracebackEntry entry
     cache_key = filename, lineno
+
     if (entry := cache.get(cache_key)) is None:
         entry = TracebackEntry(
             filename,
@@ -139,7 +137,7 @@ cdef inline TracebackEntry get_entry(
     return entry
 
 
-cpdef get_traceback():
+cpdef tuple get_traceback():
     cdef:
         PyFrameObject *frame, *last_frame
         PyCodeObject *code
@@ -165,6 +163,8 @@ cpdef get_traceback():
         Py_DECREF(<PyObject*>code)
 
         if template_info is None and entry.is_render:
+            # This logic is inspired from:
+            # https://github.com/jazzband/django-debug-toolbar/blob/main/debug_toolbar/utils.py#L123-L127
             try:
                 node = PyFrame_GetVar(frame, <PyObject*>self_var)
             except NameError:

@@ -58,6 +58,7 @@ def _get_ignored_modules():
     _set_dj_tracker_settings()
     return {
         "wsgiref",
+        "gunicorn",
         "unittest",
         "threading",
         "socketserver",

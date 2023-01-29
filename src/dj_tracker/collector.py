@@ -1,5 +1,3 @@
-import time
-
 from dj_tracker import constants
 from dj_tracker.logging import logger
 
@@ -73,19 +71,19 @@ class Collector:
         ready_trackers = cls.trackers_ready
         ready_requests = cls.requests_ready
 
-        sleep = time.sleep
-        sleep_for = constants.COLLECTION_INTERVAL
-        stopping = constants.STOPPING.is_set
+        should_stop = constants.STOPPING.wait
+        timeout = constants.COLLECTION_INTERVAL
 
         logger.info("Collector running")
 
-        while not stopping():
-            sleep(sleep_for)
+        while not should_stop(timeout):
             if ready_trackers:
                 save_trackers()
             if ready_requests:
                 save_requests()
             DummyRequestTracker.save_queries()
+
+        logger.info("Saving latest trackings...")
 
         iter_not_done = 0
         active_trackers = cls.trackers

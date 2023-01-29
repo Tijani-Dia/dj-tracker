@@ -26,7 +26,6 @@ from dj_tracker.datastructures import (
     new_model_instance_tracker,
 )
 from dj_tracker.field_descriptors import DESCRIPTORS_MAP
-from dj_tracker.logging import logger
 from dj_tracker.models import QueryType
 
 _started = False
@@ -284,14 +283,13 @@ def start():
 
         _worker_thread = threading.Thread(target=Collector.run, daemon=True)
         _worker_thread.start()
+        atexit.register(stop)
         _started = True
 
 
-@atexit.register
 def stop():
     global _worker_thread
     if _worker_thread and not STOPPING.is_set():
         STOPPING.set()
-        logger.info("Saving latest trackings...")
         _worker_thread.join()
         _worker_thread = None

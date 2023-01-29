@@ -1,8 +1,14 @@
-from dj_tracker import constants
+import atexit
+import threading
+
+from dj_tracker.constants import COLLECTION_INTERVAL
 from dj_tracker.logging import logger
 
 
 class Collector:
+    thread = None
+    stopping = threading.Event()
+
     trackers = set()
     trackers_ready = []
     num_trackers = 0
@@ -63,20 +69,32 @@ class Collector:
         cls.num_requests_saved += num_saved
 
     @classmethod
+    def start(cls):
+        assert cls.thread is None and not cls.stopping.is_set()
+        cls.thread = threading.Thread(target=cls.run, daemon=True)
+        cls.thread.start()
+        atexit.register(cls.stop)
+
+    @classmethod
+    def stop(cls):
+        if cls.thread and not cls.stopping.is_set():
+            cls.stopping.set()
+            cls.thread.join()
+            cls.thread = None
+
+    @classmethod
     def run(cls):
         from dj_tracker.datastructures import DummyRequestTracker
 
+        should_stop = cls.stopping.wait
         save_trackers = cls.save_trackers
         save_requests = cls.save_requests
         ready_trackers = cls.trackers_ready
         ready_requests = cls.requests_ready
 
-        should_stop = constants.STOPPING.wait
-        timeout = constants.COLLECTION_INTERVAL
-
         logger.info("Collector running")
 
-        while not should_stop(timeout):
+        while not should_stop(COLLECTION_INTERVAL):
             if ready_trackers:
                 save_trackers()
             if ready_requests:

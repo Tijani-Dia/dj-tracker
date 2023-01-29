@@ -1,4 +1,3 @@
-import atexit
 import threading
 from functools import lru_cache, partial, wraps
 from time import perf_counter_ns
@@ -14,7 +13,6 @@ from dj_tracker.constants import (
     DUMMY_REQUEST,
     EXTRA_DESCRIPTORS,
     IGNORED_PATHS,
-    STOPPING,
     TRACK_ATTRIBUTES_ACCESSED,
     TRACKED_MODELS,
 )
@@ -29,8 +27,9 @@ from dj_tracker.field_descriptors import DESCRIPTORS_MAP
 from dj_tracker.models import QueryType
 
 _started = False
-_worker_thread = None
 _lock = threading.Lock()
+
+stop = Collector.stop
 
 
 class FromDBDescriptor:
@@ -259,8 +258,9 @@ def patch_getattr():
 
 
 def start():
+    global _started
+
     with _lock:
-        global _started, _worker_thread
         if _started:
             return
 
@@ -281,15 +281,5 @@ def start():
             for model in TRACKED_MODELS:
                 model.__getattribute__ = patched_get_attr
 
-        _worker_thread = threading.Thread(target=Collector.run, daemon=True)
-        _worker_thread.start()
-        atexit.register(stop)
+        Collector.start()
         _started = True
-
-
-def stop():
-    global _worker_thread
-    if _worker_thread and not STOPPING.is_set():
-        STOPPING.set()
-        _worker_thread.join()
-        _worker_thread = None

@@ -107,11 +107,5 @@ def _get_trackings_db():
     return "trackings" if "trackings" in settings.DATABASES else "default"
 
 
-def _get_stopping():
-    import threading
-
-    return threading.Event()
-
-
 def _get_dummy_request():
     return type("DummyRequest", (), {"path": "", "_ignore_path": False})

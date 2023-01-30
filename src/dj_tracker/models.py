@@ -156,16 +156,27 @@ class Query(Promisable):
         return reverse("queryset-tracking", kwargs={"pk": self.pk})
 
     def get_hints(self):
+        if self.query_type != QueryType.SELECT:
+            return
+
         cache_hits = self.cache_hits
-        if cache_hits == 1:
-            yield "Use .iterator()"
         if self.len_calls and cache_hits == 2 * self.len_calls - 1:
             yield "Use .count()"
         elif self.exists_calls and cache_hits == 2 * self.exists_calls:
             yield "Use .exists()"
         elif self.contains_calls and cache_hits == 2 * self.contains_calls:
             yield "Use .contains()"
-        if self.attributes_accessed == {}:
+
+        if self.num_instances == 0:
+            return
+
+        if cache_hits == 1:
+            yield "Use .iterator()"
+        if (
+            (attrs_accessed := self.attributes_accessed) is not None
+            and len(attrs_accessed) <= 2
+            and set(attrs_accessed).issubset({"__dict__", "_state"})
+        ):
             yield "Use .values() or .values_list()"
 
     @property

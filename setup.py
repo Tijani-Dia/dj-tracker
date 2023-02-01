@@ -28,7 +28,7 @@ install_requires = [
 ]
 
 test_requires = [
-    "black",
+    "black>=23.1",
     "isort",
     "flake8",
     "factory_boy",

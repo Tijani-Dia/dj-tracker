@@ -1,16 +1,19 @@
 <p align="center">
-<a href="https://github.com/tijani-dia/dj-tracker/actions/workflows/test.yml">
-    <img src="https://github.com/tijani-dia/dj-tracker/actions/workflows/test.yml/badge.svg"/>
-</a>
-<a href="https://codecov.io/gh/Tijani-Dia/dj-tracker">
-    <img src="https://codecov.io/gh/Tijani-Dia/dj-tracker/branch/main/graph/badge.svg?token=MKJ71ZJE67"/>
-</a>
-<a href="https://pypi.org/project/django-trackings/">
-    <img src="https://badge.fury.io/py/django-trackings.svg" alt="Package version">
-</a>
-<a href="https://opensource.org/licenses/BSD-3-Clause">
-    <img src="https://img.shields.io/badge/license-BSD-blue.svg"/>
-</a>
+    <a href="https://github.com/tijani-dia/dj-tracker/actions/workflows/test.yml">
+        <img src="https://github.com/tijani-dia/dj-tracker/actions/workflows/test.yml/badge.svg"/>
+    </a>
+    <a href="https://codecov.io/gh/Tijani-Dia/dj-tracker">
+        <img src="https://codecov.io/gh/Tijani-Dia/dj-tracker/branch/main/graph/badge.svg?token=MKJ71ZJE67"/>
+    </a>
+    <a href="https://pypi.org/project/django-trackings/">
+        <img src="https://badge.fury.io/py/django-trackings.svg" alt="Package version">
+    </a>
+    <a href="https://pypistats.org/packages/django-trackings">
+        <img src="https://img.shields.io/pypi/dm/django-trackings?logo=Downloads" alt="Monthly downloads"/>
+    </a>
+    <a href="https://opensource.org/licenses/BSD-3-Clause">
+        <img src="https://img.shields.io/badge/license-BSD-blue.svg"/>
+    </a>
 </p>
 
 # dj-tracker

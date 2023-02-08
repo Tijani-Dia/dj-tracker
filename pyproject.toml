@@ -1,3 +1,6 @@
 [build-system]
-requires = ["setuptools", "wheel", "Cython>=3.0.0a11"]
+requires = ["setuptools", "wheel", "Cython>=3.0.0a11", "pytailwindcss"]
 build-backend = "setuptools.build_meta"
+
+[tool.djlint]
+profile="django"

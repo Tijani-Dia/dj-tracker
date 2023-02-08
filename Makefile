@@ -5,7 +5,7 @@ format:
 	flake8 src/dj_tracker tests setup.py manage.py
 
 format-client:
-	npx prettier --write docs README.md --tab-width=4
+	npx prettier --write docs README.md styles *.js --tab-width=4
 	npx prettier --write *.yml .github --tab-width=2
 
 format-html:
@@ -18,6 +18,12 @@ coverage:
 	coverage run manage.py test
 	coverage report -m
 	coverage html
+
+watch-styles:
+	tailwindcss -i styles/main.css -o src/dj_tracker/static/dj_tracker/css/main.css --watch
+
+build-styles:
+	tailwindcss -i styles/main.css -o src/dj_tracker/static/dj_tracker/css/main.css --minify
 
 clean:
 	find . -name '*.pyc' -exec rm -rf {} +

@@ -24,8 +24,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Install dependencies
           python -m pip install '.[docs]'
+        env:
+          SKIP_TAILWIND: true
 
       - name: Build & deploy documentation
         run: |

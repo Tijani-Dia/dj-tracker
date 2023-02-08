@@ -1,86 +1,99 @@
 {% extends "dj_tracker/base.html" %}
-{% block title %}Queryset tracking #{{ object.pk }}{% endblock %}
+
+{% block title %}Queryset {{ object.pk }}{% endblock %}
+
+{% block h1 %}
+    Queryset {{ object.pk }}
+    <small class="text-muted">{{ object.num_instances }} instance{{ object.num_instances|pluralize }} tracked.</small>
+{% endblock %}
+
 {% block body %}
-    <h1 class="my-4 d-flex align-items-baseline">
-        Queryset tracking #{{ object.pk }}
-        <small class="text-muted fs-6 ms-3">{{ object.num_instances }} instances tracked.</small>
-    </h1>
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="d-flex justify-content-between">
-                <button class="btn btn-dark"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#tb-{{ object.pk }}"
-                        aria-expanded="false">
-                    Traceback
-                </button>
-                <button class="btn btn-dark"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#sql-{{ object.pk }}"
-                        aria-expanded="false">
-                    SQL
-                </button>
+    <section class="flex w-full"
+             x-data="{ showFieldStats: true, showSQL: false, showTraceback: false }">
+        <div class="w-1/5">
+            <h5 class="section__subtitle">Toggle</h5>
+            <button class="block my-3 font-medium text-indigo-900"
+                    @click="showSQL = !showSQL; showTraceback = false; showFieldStats = false;">
+                SQL
+            </button>
+            <button class="block mb-3 font-medium text-indigo-900"
+                    @click="showTraceback = !showTraceback; showSQL = false; showFieldStats = false;">
+                Traceback
+            </button>
+            <button class="block mb-3 font-medium text-indigo-900"
+                    @click="showFieldStats = !showFieldStats; showSQL = false; showTraceback = false;">
+                Fields stats
+            </button>
+        </div>
+        <div class="flex-grow mr-8 w-3/5">
+            <div x-show="showSQL">
+                <h5 class="section__subtitle">SQL</h5>
+                <code class="font-mono font-medium text-slate-800 tracking-tight">
+                    {{ object.sql }}
+                </code>
             </div>
-            <div class="collapse" id="sql-{{ object.pk }}">
-                <p class="card-text font-monospace">{{ object.sql }}</p>
-            </div>
-            <div class="collapse" id="tb-{{ object.pk }}">
+            <div x-show="showTraceback">
                 {% if object.traceback.template_info %}
-                    <h5>Template Info</h5>
-                    <p class="bg-secondary text-light p-2">{{ object.traceback.template_info.filename }}:{{ object.traceback.template_info.lineno }}</p>
-                    <p class="card-text font-monospace">{{ object.traceback.template_info.code }}</p>
+                    <h5 class="section__subtitle">Template Info</h5>
+                    <p class="bg-slate-100 font-medium text-slate-800 p-2.5">
+                        {{ object.traceback.template_info.filename }}:{{ object.traceback.template_info.lineno }}
+                    </p>
+                    <div class="p-2 mb-4">
+                        <code>{{ object.traceback.template_info.code }}</code>
+                    </div>
                 {% endif %}
                 {% with object.traceback.entries as stack_entries %}
                     {% if stack_entries %}
-                        <div class="stack-middle my-4">
-                            <h5>Stack Info</h5>
+                        <div class="mb-4">
+                            <h5 class="section__subtitle">Stack Info</h5>
                             {% for entry in stack_entries %}
-                                <p class="bg-secondary text-light p-2">{{ entry.filename }}:{{ entry.lineno }} - {{ entry.func }}</p>
-                                <p class="card-text font-monospace">{{ entry.code }}</p>
+                                <p class="bg-slate-100 font-medium text-slate-800 p-2.5">{{ entry.filename }}:{{ entry.lineno }} - {{ entry.func }}</p>
+                                <div class="p-2">
+                                    <code>{{ entry.code }}</code>
+                                </div>
                             {% endfor %}
                         </div>
                     {% endif %}
                 {% endwith %}
             </div>
-        </div>
-    </div>
-    <div class="row my-4">
-        <h4 class="h4">Hints</h4>
-        <ul class="list-group list-group-flush">
-            {% for hint in object.get_hints %}
-                <li class="list-group-item">{{ hint }}</li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% for instance_tracking in object.instance_trackings.all %}
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-baseline">
-                    <h4 class="card-title">{{ instance_tracking.select_related_field }}</h4>
-                </div>
-                <table class="table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Field</th>
-                        <th scope="col">Get</th>
-                        <th scope="col">Set</th>
-                        <th scope="col">Occurrences</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                        {% for obj in instance_tracking.related_field_trackings.all %}
+            <div x-show="showFieldStats">
+                <h5 class="section__subtitle">Fields stats</h5>
+                {% for instance_tracking in object.instance_trackings.all %}
+                    <h4 class="font-medium text-lg text-indigo-800 my-2">{{ instance_tracking.select_related_field }}</h4>
+                    <table class="mb-8 w-full">
+                        <thead>
                             <tr>
-                                <th scope="row">{{ obj.field_tracking.field.name }}</th>
-                                <td>{{ obj.field_tracking.get_count }}</td>
-                                <td>{{ obj.field_tracking.set_count }}</td>
-                                <td>{{ obj.num_occurrences }}</td>
+                                <th>Field</th>
+                                <th>Get</th>
+                                <th>Set</th>
+                                <th>Occurrences</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for obj in instance_tracking.related_field_trackings.all %}
+                                <tr>
+                                    <th>{{ obj.field_tracking.field.name }}</th>
+                                    <td>{{ obj.field_tracking.get_count }}</td>
+                                    <td>{{ obj.field_tracking.set_count }}</td>
+                                    <td>{{ obj.num_occurrences }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% empty %}
+                    <p>No field stats available.</p>
+                {% endfor %}
             </div>
         </div>
-    {% endfor %}
+        <div class="w-1/5">
+            <h4 class="section__subtitle">Hints</h4>
+            <ul>
+                {% for hint in object.get_hints %}
+                    <li>{{ hint }}</li>
+                {% empty %}
+                    <p>No hints available</p>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
 {% endblock %}

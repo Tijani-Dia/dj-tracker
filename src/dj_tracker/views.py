@@ -1,3 +1,4 @@
+from django.core.paginator import Paginator
 from django.db.models import Count, F, Max, Prefetch, Sum
 from django.db.models.functions import Coalesce
 from django.views.generic import TemplateView
@@ -69,7 +70,8 @@ class URLPathTrackingsView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["query_groups"] = (
+
+        query_groups = (
             QueryGroup.objects.annotate_num_queries()
             .filter(trackings__request_id=self.object.pk)
             .annotate(
@@ -77,6 +79,9 @@ class URLPathTrackingsView(DetailView):
                 latest_run_at=Max("trackings__started_at"),
             )
             .order_by("-latest_run_at")
+        )
+        context["page_obj"] = Paginator(query_groups, 7).get_page(
+            self.request.GET.get("page")
         )
         return context
 

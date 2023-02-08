@@ -1,0 +1,27 @@
+<nav class="mt-10 w-max m-auto">
+    <ul class="flex">
+        {% if page_obj.has_previous %}
+            <li class="p-2 border border-slate-300">
+                <a href="?page=1">First</a>
+            </li>
+            <li class="p-2 border border-slate-300">
+                <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+        {% else %}
+            <span class="p-2 border border-slate-300 text-indigo-900 font-medium opacity-75">Previous</span>
+        {% endif %}
+
+        <span class="p-2 bg-indigo-900 text-slate-50">{{ page_obj.number }}</span>
+
+        {% if page_obj.has_next %}
+            <li class="p-2 border border-slate-300">
+                <a href="?page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            <li class="p-2 border border-slate-300">
+                <a href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+            </li>
+        {% else %}
+            <span class="p-2 border border-slate-300 text-indigo-900 font-medium opacity-75">Next</span>
+        {% endif %}
+    </ul>
+</nav>

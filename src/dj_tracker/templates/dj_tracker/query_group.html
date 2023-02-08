@@ -1,31 +1,44 @@
 {% extends "dj_tracker/base.html" %}
-{% block title %}Query Group #{{ object.pk }}{% endblock %}
-{% block body %}
-    <h1>Query Group #{{ object.pk }} -
-        <small class="text-muted">{{ object.num_queries }} queries</small>
-    </h1>
-    <div class="row align-items-center">
-        <div class="col">
-            <h4 class="h4">Requests</h4>
-            <ul class="list">
-                {% for request in requests %}
-                    <li class="list-item">{{ request.path }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="col btn-group" role="group">
-            <input type="checkbox" class="btn-check" id="show-duplicates" autocomplete="off">
-            <label class="btn btn-outline-primary" for="show-duplicates">Duplicates</label>
 
-            <input type="checkbox" class="btn-check" id="show-related" autocomplete="off">
-            <label class="btn btn-outline-primary" for="show-related">Related</label>
+{% block title %}Query Group #{{ object.pk }}{% endblock %}
+
+{% block h1 %}
+    Query Group {{ object.pk }}
+    <small class="text-muted">{{ object.num_queries }} quer{{ object.num_queries|pluralize:"y,ies" }}</small>
+{% endblock %}
+
+{% block body %}
+    <section class="flex">
+        <div class="w-1/4 pr-16">
+            <h5 class="section__subtitle">Filter</h5>
+            <div role="group">
+                <div class="mb-3 mt-1">
+                    <input type="checkbox" id="show-related" autocomplete="off">
+                    <label for="show-related">related</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="show-duplicates" autocomplete="off">
+                    <label for="show-duplicates">duplicates</label>
+                </div>
+            </div>
+            <h5 class="section__subtitle mt-4">Requests</h5>
+            <ol>
+                {% for request in requests %}
+                    <li class="py-2.5 first:pt-0">
+                        <a href="{{ request.get_absolute_url }}" class="break-words">{{ request }}</a>
+                    </li>
+                {% endfor %}
+            </ol>
         </div>
-    </div>
-    <div class="d-flex fs-5 my-4 flex-row flex-wrap">
-        {% for qs_tracking in qs_trackings %}
-            {% include "dj_tracker/qs_tracking.html" with qs_tracking=qs_tracking query=qs_tracking.query query_pk=qs_tracking.query.pk %}
-        {% endfor %}
-    </div>
+        <div class="w-3/4">
+            <h5 class="section__subtitle">Queries</h5>
+            <div>
+                {% for qs_tracking in qs_trackings %}
+                    {% include "dj_tracker/qs_tracking.html" with qs_tracking=qs_tracking query=qs_tracking.query query_pk=qs_tracking.query.pk %}
+                {% endfor %}
+            </div>
+        </div>
+    </section>
 
     {{ query_pks|json_script:"query-pks" }}
 

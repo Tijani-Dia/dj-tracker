@@ -32,7 +32,7 @@ class Field(Promisable):
     name = models.CharField(max_length=255)
 
     def __str__(self):
-        return f"{self.model}.{self.name}"
+        return f"{self.name} ({self.model})"
 
 
 class SQL(Promisable):
@@ -59,7 +59,10 @@ class Request(Promisable):
         return reverse("url-trackings", kwargs={"pk": self.pk})
 
     def __str__(self):
-        base = f"{self.method}:{self.path}"
+        if not self.method:
+            return "DummyRequest"
+
+        base = f"[{self.method}] {self.path}"
         return base if not self.query_string else f"{base}?{self.query_string}"
 
 

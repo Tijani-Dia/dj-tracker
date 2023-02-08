@@ -2,139 +2,153 @@
 
 {% block title %}Trackings{% endblock %}
 
+{% block h1 %}Home{% endblock %}
+
 {% block body %}
-    <h1 class="h1">Trackings</h1>
-    <div class="container mx-0 mt-4 p-0">
-        <div class="row gy-5 pb-4">
-            <div class="col-12">
-                <div class="card">
-                    <h4 class="card-header">Requests</h4>
-                    <div class="card-body p-0">
-                        <div class="row gx-5">
-                            <div class="col">
-                                <h5 class="h5 ms-3 my-3">Latest</h5>
-                                <div class="list-group list-group-flush">
-                                    {% for request in latest %}
-                                        <a href="{{ request.get_absolute_url }}"
-                                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                            <div class="">{{ request.path }}</div>
-                                        </a>
-                                    {% empty %}
-                                        <p>No trackings yet.</p>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div class="col">
-                                <h5 class="h5 ms-3 my-3">Most frequent</h5>
-                                <div class="list-group list-group-flush">
-                                    {% for request in most_tracked %}
-                                        <a href="{{ request.get_absolute_url }}"
-                                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                            <div class="">{{ request.path }}</div>
-                                            <span class="badge bg-primary rounded-pill">{{ request.num_trackings }}</span>
-                                        </a>
-                                    {% empty %}
-                                        <p>No trackings yet.</p>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-center">
-                            <a href="{% url 'requests' %}" class="btn btn-primary my-4">See all requests</a>
-                        </div>
-                    </div>
-                </div>
+    <section>
+        <h4 class="section__title">Requests</h4>
+        <div class="section__body flex">
+            <div class="w-5/12 mr-4">
+                <h5 class="section__subtitle">Latest</h5>
+                <ol>
+                    {% for request in latest %}
+                        <li class="py-2.5 first:pt-0">
+                            <a href="{{ request.get_absolute_url }}" class="break-words">{{ request }}</a>
+                        </li>
+                    {% empty %}
+                        <li>No trackings yet.</li>
+                    {% endfor %}
+                </ol>
             </div>
-            <div class="col-6">
-                <div class="card">
-                    <h4 class="card-header">Queries</h4>
-                    <div class="card-body">
-                        <div class="row">
-                            <h5 class="card-title">Most frequent</h5>
-                            <table class="table">
-                                <thead>
-                                  <tr>
-                                    <th scope="col">#</th>
-                                    <th scope="col">Repeated</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                    {% for query in most_repeated_queries %}
-                                        <tr>
-                                            <td><a href="{{ query.get_absolute_url }}">{{ query.pk }}</a></td>
-                                            <td>{{ query.num_trackings }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="row">
-                            <h5 class="card-title">Largest query groups</h5>
-                            <table class="table">
-                                <thead>
-                                  <tr>
-                                    <th scope="col">#</th>
-                                    <th scope="col">Num queries</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                    {% for query_group in largest_query_groups %}
-                                        <tr>
-                                            <td><a href="{{ query_group.get_absolute_url }}">{{ query_group.pk }}</a></td>
-                                            <td>{{ query_group.num_queries }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="row">
-                            <h5 class="card-title">Slowest</h5>
-                            <table class="table">
-                                <thead>
-                                  <tr>
-                                    <th scope="col">#</th>
-                                    <th scope="col">Average duration (in ms)</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                    {% for query in slowest %}
-                                        <tr>
-                                            <td><a href="{{ query.get_absolute_url }}">{{ query.pk }}</a></td>
-                                            <td>{{ query.average_duration_in_ms }}</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+            <div class="w-5/12 mr-4">
+                <h5 class="section__subtitle">Most frequent</h5>
+                <ol>
+                    {% for request in most_tracked %}
+                        <li class="py-2.5 first:pt-0 flex justify-between">
+                            <a href="{{ request.get_absolute_url }}" class="break-words">{{ request }}</a>
+                            <span class="rounded-pill">{{ request.num_trackings }}</span>
+                        </li>
+                    {% empty %}
+                        <li>No trackings yet.</li>
+                    {% endfor %}
+                </ol>
             </div>
-            <div class="col-6">
-                <div class="card">
-                    <h4 class="card-header">Fields</h4>
-                    <div class="card-body">
-                        <h5 class="card-title">Most accessed</h5>
-                        <table class="table">
-                            <thead>
-                              <tr>
-                                <th scope="col">#</th>
-                                <th scope="col">Get</th>
-                                <th scope="col">Set</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                                {% for field in most_accessed_fields %}
-                                    <tr>
-                                        <td>{{ field }}</td>
-                                        <td>{{ field.get_count }}</td>
-                                        <td>{{ field.set_count }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            <div class="w-1/6 m-auto">
+                <a href="{% url 'requests' %}"
+                   class="w-12 float-right bg-indigo-900 hover:bg-indigo-800">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 24 24"
+                         class="fill-indigo-50">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                </a>
             </div>
         </div>
-    </div>
-{% endblock %}
+    </section>
+
+    <section>
+        <h4 class="section__title">Queries</h4>
+        <div class="section__body flex justify-between">
+            <div>
+                <h5 class="section__subtitle">Most frequent</h5>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Repeated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for query in most_repeated_queries %}
+                            <tr>
+                                <td>
+                                    <a href="{{ query.get_absolute_url }}">{{ query.pk }}</a>
+                                </td>
+                                <td>{{ query.num_trackings }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <h5 class="section__subtitle">Slowest</h5>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Average duration (in ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for query in slowest %}
+                            <tr>
+                                <td>
+                                    <a href="{{ query.get_absolute_url }}">{{ query.pk }}</a>
+                                </td>
+                                <td>{{ query.average_duration_in_ms }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <h5 class="section__subtitle">Largest query groups</h5>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Number of queries</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for query_group in largest_query_groups %}
+                            <tr>
+                                <td>
+                                    <a href="{{ query_group.get_absolute_url }}">{{ query_group.pk }}</a>
+                                </td>
+                                <td>{{ query_group.num_queries }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h4 class="section__title">Fields</h4>
+        <div class="section__body w-full">
+            <h5 class="section__subtitle">Most accessed</h5>
+            <table class="w-3/4">
+                <thead>
+                    <tr>
+                        <th>
+                            #
+                        </th>
+                        <th>
+                            Get
+                        </th>
+                        <th>
+                            Set
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for field in most_accessed_fields %}
+                        <tr>
+                            <td>
+                                {{ field }}
+                            </td>
+                            <td>
+                                {{ field.get_count }}
+                            </td>
+                            <td>
+                                {{ field.set_count }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endblock body %}

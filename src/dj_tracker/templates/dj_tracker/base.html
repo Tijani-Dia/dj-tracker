@@ -1,16 +1,35 @@
 {% load static %}
+
 <html>
     <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>
             {% block title %}
             {% endblock title %}
         </title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="{% static 'dj_tracker/css/main.css' %}">
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     </head>
-    <body class="container-xl vw-100 vh-100 position-relative mt-4">
-        {% block body %}
-        {% endblock body %}
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+    <body class="font-sans text-slate-900 flex flex-col min-h-screen">
+        <div class="bg-indigo-900 text-indigo-50 text-3xl p-6 pl-8 flex">
+            <a href="{% url 'trackings' %}"
+               class="text-inherit font-bold hover:no-underline">dj-tracker</a>
+            <span class="mx-2">-</span>
+            <h1 class="font-medium">
+                {% block h1 %}
+                {% endblock h1 %}
+            </h1>
+        </div>
+        <div class="mx-10 my-4 flex-grow">
+            {% block body %}
+            {% endblock body %}
+        </div>
+        <footer class="bg-indigo-900 p-8 pb-4 mt-16">
+            <a href="https://tijani-dia.github.io/dj-tracker/"
+               class="text-indigo-50 underline underline-offset-2">Docs</a>
+        </footer>
     </body>
 </html>

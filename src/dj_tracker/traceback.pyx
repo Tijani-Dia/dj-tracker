@@ -139,7 +139,8 @@ cdef inline TracebackEntry get_entry(
 
 cpdef tuple get_traceback():
     cdef:
-        PyFrameObject *frame, *last_frame
+        PyFrameObject *frame
+        PyFrameObject *last_frame
         PyCodeObject *code
         PyObject *node
         TracebackEntry entry

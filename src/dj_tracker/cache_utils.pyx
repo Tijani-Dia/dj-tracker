@@ -3,10 +3,6 @@ from cpython.object cimport PyObject
 
 
 cdef class LRUCache:
-    cdef:
-        dict cache
-        readonly int maxsize
-
     def __cinit__(self, int maxsize=256):
         self.cache = {}
         self.maxsize = maxsize

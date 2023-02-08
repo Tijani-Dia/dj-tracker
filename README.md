@@ -16,8 +16,6 @@
     </a>
 </p>
 
-# dj-tracker
-
 `dj-tracker` is an app that tracks your queries to help detecting some possible performance optimisations listed in [Database access optimization](https://docs.djangoproject.com/en/dev/topics/db/optimization/).
 
 ## Features
@@ -46,6 +44,10 @@ All documentation is in the "docs" directory and online at https://tijani-dia.gi
 
 ## Development phase
 
-Currently, `dj-tracker` is in [alpha phase](https://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha).
+`dj-tracker` is in [alpha phase](https://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha).
 
-I'd like to improve the UI, have a more robust test suite and improve the code quality (docs, typing...). Any feedback will be highly appreciated, especially for the UI.
+## Contributing
+
+The best way you can help, at this stage, is to install it and report bugs you'll encounter.
+
+Feature requests, PRs and feedbacks are welcome.

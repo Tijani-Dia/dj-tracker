@@ -1,11 +1,9 @@
-site_name: Django tracker
+site_name: dj-tracker
 site_url: https://tijani-dia.github.io/dj-tracker/
 repo_url: https://github.com/tijani-dia/dj-tracker
 repo_name: tijani-dia/dj-tracker
 theme:
   name: material
-  palette:
-    primary: blue grey
 
 nav:
   - Home: index.md

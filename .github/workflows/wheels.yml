@@ -1,6 +1,10 @@
 name: Build and upload to PyPI
 
-on: push
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
 
 jobs:
   wheels:

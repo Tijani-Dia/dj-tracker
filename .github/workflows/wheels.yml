@@ -7,8 +7,50 @@ on:
   workflow_dispatch:
 
 jobs:
+  build_static:
+    name: Build static files
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run tailwindcss
+        run: |
+          pipx install pytailwindcss
+          tailwindcss -i styles/main.css -o main.css --minify
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: static
+          path: main.css
+
+  sdist:
+    name: Build source distribution
+    needs: build_static
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: static
+          path: src/dj_tracker/static/dj_tracker/css/main.css
+
+      - name: Compile Cython files
+        run: |
+          pipx run --spec Cython==3.0.0a11 cython src/dj_tracker/*.pyx --fast-fail -Werror -3
+
+      - name: Build sdist
+        run: pipx run build --sdist
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: dist/*.tar.gz
+
   wheels:
     name: Build wheels on ${{ matrix.os }}
+    needs: build_static
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -20,6 +62,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: actions/download-artifact@v3
+        with:
+          name: static
+          path: src/dj_tracker/static/dj_tracker/css/main.css
+
       - name: Set up QEMU
         if: runner.os == 'Linux'
         uses: docker/setup-qemu-action@v2
@@ -30,31 +77,21 @@ jobs:
         uses: pypa/cibuildwheel@v2.11.4
         env:
           CIBW_SKIP: pp*
-          CIBW_ARCHS_LINUX: x86_64 aarch64
+          CIBW_ARCHS_LINUX: "auto aarch64"
+          CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
 
       - uses: actions/upload-artifact@v3
         with:
           path: ./wheelhouse/*.whl
 
-  sdist:
-    name: Build source distribution
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build sdist
-        run: pipx run build --sdist
-
-      - uses: actions/upload-artifact@v3
-        with:
-          path: dist/*.tar.gz
-
   upload_pypi:
+    name: Upload package to Pypi
     needs:
       - sdist
       - wheels
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+
     steps:
       - uses: actions/download-artifact@v3
         with:

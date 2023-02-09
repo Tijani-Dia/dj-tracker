@@ -42,12 +42,8 @@ Check out the [installation steps](https://tijani-dia.github.io/dj-tracker/insta
 
 All documentation is in the "docs" directory and online at https://tijani-dia.github.io/dj-tracker/
 
-## Development phase
+## Development phase - Contributing
 
 `dj-tracker` is in [alpha phase](https://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha).
 
-## Contributing
-
-The best way you can help, at this stage, is to install it and report bugs you'll encounter.
-
-Feature requests, PRs and feedbacks are welcome.
+You can help a lot by [reporting bugs](https://github.com/Tijani-Dia/dj-tracker/issues/new) you'll encounter. Feature requests, PRs or/and any feedback are also welcome.

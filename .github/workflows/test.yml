@@ -64,13 +64,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
       - uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
-          pipx install Cython==3.0.0a11
-          pipx install coverage
-          pipx install '.[test]'
+          python3 -m pip install --upgrade pip
+          python3 -m pip install Cython==3.0.0a11
+          python3 -m pip install coverage
+          python3 -m pip install .[test]
         env:
           TRACE_LINES: true
 

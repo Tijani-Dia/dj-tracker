@@ -16,10 +16,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
       - uses: actions/checkout@v3
 
       - name: Install dependencies
-        run: pipx install '.[docs]'
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install .[docs]
 
       - name: Build & deploy documentation
         run: |

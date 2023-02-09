@@ -35,7 +35,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: static
-          path: src/dj_tracker/static/dj_tracker/css/main.css
+          path: src/dj_tracker/static/dj_tracker/css
 
       - name: Compile Cython files
         run: |
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: static
-          path: src/dj_tracker/static/dj_tracker/css/main.css
+          path: src/dj_tracker/static/dj_tracker/css
 
       - name: Set up QEMU
         if: runner.os == 'Linux'

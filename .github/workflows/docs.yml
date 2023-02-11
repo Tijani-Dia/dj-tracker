@@ -16,16 +16,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
       - uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install .[docs]
+          pipx install mkdocs
+          pipx inject mkdocs mkdocs-material
 
       - name: Build & deploy documentation
         run: |

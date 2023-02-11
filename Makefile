@@ -1,11 +1,11 @@
 format:
 	autoflake -i -r --remove-all-unused-imports src/dj_tracker/*.py tests
-	isort src/dj_tracker tests setup.py manage.py
-	black src/dj_tracker tests setup.py manage.py
-	flake8 src/dj_tracker tests setup.py manage.py
+	isort src/dj_tracker tests tutorial setup.py manage.py
+	black src/dj_tracker tests tutorial setup.py manage.py
+	flake8 src/dj_tracker tests tutorial setup.py manage.py
 
 format-client:
-	npx prettier --write docs README.md styles *.js --tab-width=4
+	npx prettier --write docs README.md tutorial/README.md styles *.js --tab-width=4
 	npx prettier --write *.yml .github --tab-width=2
 
 format-html:

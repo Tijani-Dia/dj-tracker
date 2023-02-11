@@ -60,6 +60,4 @@ Your Django models are now ready to be tracked!
 
 Run the `runserver` command with the `--noreload` option (**important**) and your trackings will be available at `/dj-tracker/`.
 
-Have a look at the [Usage page](./usage.md) to learn more about how to use `dj_tracker` to optimise your queries.
-
-There are also [more configuration options available](./configuration.md).
+Have a look at the [Tutorial page](./tutorial/setup.md) to learn more about how to use `dj_tracker` to optimise your queries or see the [configuration options available](./configuration.md).

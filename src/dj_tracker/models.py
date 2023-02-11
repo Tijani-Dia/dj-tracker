@@ -177,8 +177,8 @@ class Query(Promisable):
             yield "Use .iterator()"
         if (
             (attrs_accessed := self.attributes_accessed) is not None
-            and len(attrs_accessed) <= 2
-            and set(attrs_accessed).issubset({"__dict__", "_state"})
+            and len(attrs_accessed) <= 3
+            and set(attrs_accessed).issubset({"__dict__", "__class__", "_state"})
         ):
             yield "Use .values() or .values_list()"
 

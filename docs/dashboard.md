@@ -1,18 +1,16 @@
-# Usage
+# Dasboard
 
-This page shows how to use `dj_tracker` to optimise your queries. We assume that you've already followed the steps in [Installation](./installation.md).
-
-Run `manage.py runserver --noreload` and visit some URLs to have some trackings.
+This page gives an overview of the `dj-tracker` dashboard structure.
 
 ## Dashboard
 
-The trackings dashboard is available at `/dj-tracker/`. It shows the latest and most visited URLs along with various insights into your queries.
+The trackings dashboard is available at `/dj-tracker/`. It shows the latest and most visited URLs along with various insights into your queries and fields:
 
 ![dj-tracker dashboard](images/dashboard.png)
 
 ## Requests
 
-When you click in one of the requests shown in the dashboard, it will redirect to page showing the different query groups for that request along with how much time they occured.
+When you click in one of the requests shown in the dashboard, it will redirect to a page showing the different query groups for that request along with how much time they occured.
 
 ![dj-tracker request](images/request.png)
 

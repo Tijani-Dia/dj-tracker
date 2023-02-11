@@ -36,7 +36,7 @@
 
 ## Getting started
 
-Check out the [installation steps](https://tijani-dia.github.io/dj-tracker/installation/).
+Check out the [installation steps](https://tijani-dia.github.io/dj-tracker/installation/) if you want to get started quickly or the [tutorial](https://tijani-dia.github.io/dj-tracker/tutorial/setup/) to see a concrete example of `dj-tracker` usage.
 
 ## Documentation
 

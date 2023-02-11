@@ -8,5 +8,12 @@ theme:
 nav:
   - Home: index.md
   - Installation: installation.md
+  - Tutorial:
+      - Set up project: tutorial/setup.md
+      - Detect and resolve related queries: tutorial/detect_and_resolve_related.md
+      - Use `only`/`defer`: tutorial/use_only_or_defer.md
+      - Use `values`/`values_list`: tutorial/use_values_or_values_list.md
+      - Use `iterator``: tutorial/use_iterator.md
+      - Final notes: tutorial/final_notes.md
+  - Dashboard: dashboard.md
   - Configuration: configuration.md
-  - Usage: usage.md

@@ -1,0 +1,5 @@
+{% load iterate_tags %}
+
+{% iterate book in books %}
+    {{ book.title }} -({{ book.author__first_name }} {{ book.author__last_name }}) - {{ book.category__name }}
+{% enditerate %}

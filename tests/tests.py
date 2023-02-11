@@ -22,10 +22,9 @@ get_instance_tracker = get_queryset_tracker = attrgetter("_tracker")
 
 class TestAttributeTracker(TestCase):
     def test_track_attribute(self):
-        for _ in range(3):
-            CategoryFactory()
+        CategoryFactory.create_batch(3)
 
-        for i, category in enumerate(Category.objects.all()):
+        for category in Category.objects.all():
             tracker = get_instance_tracker(category)
 
             name = category.name
@@ -37,8 +36,6 @@ class TestAttributeTracker(TestCase):
             self.assertEqual(category.name, "new-name")
             self.assertEqual(tracker["name"].get, 3)
             self.assertEqual(tracker["name"].set, 1)
-            if i == 2:
-                category.name
 
     def test_track_deferred_attribute(self):
         BookFactory()
@@ -65,8 +62,7 @@ class TestAttributeTracker(TestCase):
 class TestForwardManyToOneTracker(TestCase):
     def test_track_forward_many_to_one(self):
         category = CategoryFactory()
-        for _ in range(2):
-            BookFactory(category=category)
+        BookFactory.create_batch(2, category=category)
 
         book = Book.objects.last()
         self.assertEqual(book.category, category)
@@ -88,8 +84,11 @@ class TestForwardManyToOneTracker(TestCase):
 
 
 class TestForwardOneToOneTracker(TestCase):
-    def test_track_forward_one_to_one(self):
+    @classmethod
+    def setUpTestData(cls):
         AuthorFactory()
+
+    def test_track_forward_one_to_one(self):
         author = Author.objects.last()
         user = UserFactory()
         self.assertNotEqual(author.user, user)
@@ -102,7 +101,6 @@ class TestForwardOneToOneTracker(TestCase):
         self.assertEqual(tracker["user"].set, 2)
 
     def test_track_related(self):
-        AuthorFactory()
         author = Author.objects.last()
         user = author.user
         self.assertEqual(
@@ -112,8 +110,11 @@ class TestForwardOneToOneTracker(TestCase):
 
 
 class TestReverseOneToOneTracker(TestCase):
-    def test_track_forward_one_to_one(self):
+    @classmethod
+    def setUpTestData(cls):
         AuthorFactory()
+
+    def test_track_forward_one_to_one(self):
         user = User.objects.last()
         author = AuthorFactory()
 
@@ -125,7 +126,6 @@ class TestReverseOneToOneTracker(TestCase):
         self.assertEqual(tracker["author"].set, 0)
 
     def test_track_related(self):
-        AuthorFactory()
         user = User.objects.last()
         author = user.author
         self.assertEqual(
@@ -137,8 +137,7 @@ class TestReverseOneToOneTracker(TestCase):
 class TestReverseManyToOneTracker(TestCase):
     def test_track_reverse_many_to_one(self):
         category = CategoryFactory()
-        for _ in range(2):
-            BookFactory(category=category)
+        BookFactory.create_batch(2, category=category)
 
         category = Category.objects.get(pk=category.pk)
         self.assertEqual(category.books.count(), 2)
@@ -163,11 +162,13 @@ class TestReverseManyToOneTracker(TestCase):
 
 
 class TestManyToManyTracker(TestCase):
-    def test_track_many_to_many(self):
-        authors = [AuthorFactory() for _ in range(3)]
+    @classmethod
+    def setUpTestData(cls):
+        authors = AuthorFactory.create_batch(3)
         for _ in range(3):
             BookFactory(authors=random.sample(authors, 2))
 
+    def test_track_many_to_many(self):
         book = Book.objects.last()
         self.assertTrue(book.authors.all())
 
@@ -183,10 +184,6 @@ class TestManyToManyTracker(TestCase):
         self.assertEqual(tracker["authors"].set, 0)
 
     def test_track_related(self):
-        authors = [AuthorFactory() for _ in range(3)]
-        for _ in range(3):
-            BookFactory(authors=random.sample(authors, 2))
-
         book = Book.objects.last()
         author = book.authors.first()
         self.assertEqual(
@@ -201,9 +198,13 @@ class TestManyToManyTracker(TestCase):
 
 
 class TestGenericForeignKeyTracker(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.book = BookFactory()
+        CommentFactory(content_object=cls.book)
+
     def test_track_generic_foreign_key(self):
-        book = BookFactory()
-        CommentFactory(content_object=book)
+        book = self.book
         comment = Comment.objects.last()
 
         self.assertEqual(comment.content_object, book)
@@ -216,7 +217,6 @@ class TestGenericForeignKeyTracker(TestCase):
 
     @unittest.expectedFailure
     def test_track_related(self):
-        CommentFactory(content_object=BookFactory())
         comment = Comment.objects.last()
         book = comment.content_object
         self.assertEqual(
@@ -226,10 +226,12 @@ class TestGenericForeignKeyTracker(TestCase):
 
 
 class TestReverseGenericManyToOneTracker(TestCase):
-    def test_reverse_generic_many_to_one_tracker(self):
+    @classmethod
+    def setUpTestData(cls):
         book = BookFactory()
-        for _ in range(2):
-            CommentFactory(content_object=book)
+        CommentFactory.create_batch(2, content_object=book)
+
+    def test_reverse_generic_many_to_one_tracker(self):
         book = Book.objects.last()
 
         self.assertEqual(book.comments.count(), 2)
@@ -245,12 +247,9 @@ class TestReverseGenericManyToOneTracker(TestCase):
 
     @unittest.expectedFailure
     def test_track_related(self):
-        book = BookFactory()
-        for _ in range(2):
-            CommentFactory(content_object=book)
-
         book = Book.objects.last()
         comments = book.comments.all()
+
         self.assertEqual(
             get_instance_tracker(book).queryset,
             get_instance_tracker(comments[0]).queryset.related_queryset,
@@ -260,9 +259,8 @@ class TestReverseGenericManyToOneTracker(TestCase):
 class TestPrefetchRelated(TestCase):
     def test_prefetch_related(self):
         category = CategoryFactory()
+        BookFactory.create_batch(3, category=category)
         BookFactory()
-        for _ in range(3):
-            BookFactory(category=category)
 
         with self.assertNumQueries(2):
             categories = Category.objects.prefetch_related("books").all()
@@ -285,8 +283,11 @@ class TestPrefetchRelated(TestCase):
 
 
 class TestSelectRelated(TestCase):
-    def test_select_related_fields(self):
+    @classmethod
+    def setUpTestData(cls):
         CommentFactory(content_object=BookFactory(), user=AuthorFactory().user)
+
+    def test_select_related_fields(self):
         comment = Comment.objects.select_related("user__author", "content_type").last()
 
         with self.assertNumQueries(0):
@@ -303,8 +304,7 @@ class TestSelectRelated(TestCase):
             )
 
     def test_select_related(self):
-        CommentFactory(content_object=BookFactory(), user=AuthorFactory().user)
-        comment = Comment.objects.select_related().last()
+        comment = Comment.objects.select_related().first()
 
         with self.assertNumQueries(0):
             self.assertIsNotNone(get_instance_tracker(comment).queryset)
@@ -343,8 +343,7 @@ class TestCacheHits(TestCase):
 
 class TestInstanceTracking(TestCase):
     def test_instances_tracking_occurences(self):
-        for _ in range(3):
-            BookFactory()
+        BookFactory.create_batch(3)
 
         for book in Book.objects.all():
             self.assertTrue(book.title)
@@ -357,8 +356,7 @@ class TestInstanceTracking(TestCase):
 
 class TestValuesIterable(TestCase):
     def test_values(self):
-        for _ in range(3):
-            AuthorFactory()
+        AuthorFactory.create_batch(3)
 
         objs = Author.objects.values()
         for obj in objs:
@@ -375,8 +373,7 @@ class TestValuesIterable(TestCase):
 
 class TestValuesListIterable(TestCase):
     def test_values_list(self):
-        for _ in range(3):
-            AuthorFactory()
+        AuthorFactory.create_batch(3)
 
         objs = Author.objects.values_list()
         for obj in objs:
@@ -392,8 +389,7 @@ class TestValuesListIterable(TestCase):
         self.assertEqual(qs_tracker["num_instances"], 3)
 
     def test_flat_values_list(self):
-        for _ in range(3):
-            BookFactory()
+        BookFactory.create_batch(3)
 
         for attr, attr_type in (("id", int), ("title", str)):
             with self.subTest(attr=attr, type=attr_type):
@@ -410,8 +406,8 @@ class TestValuesListIterable(TestCase):
 
 class TestCountHint(TestCase):
     def test_count_hint(self):
-        for _ in range(2):
-            AuthorFactory()
+        AuthorFactory.create_batch(2)
+
         for len_calls in range(1, 5):
             qs = Author.objects.all()
             with self.subTest(len_calls=len_calls):
@@ -425,8 +421,7 @@ class TestCountHint(TestCase):
 
 class TestContainsHint(TestCase):
     def test_contains_hint(self):
-        for _ in range(2):
-            AuthorFactory()
+        AuthorFactory.create_batch(2)
 
         author = AuthorFactory()
         for contains_calls in range(1, 5):
@@ -445,6 +440,7 @@ class TestContainsHint(TestCase):
 class TestExistsHint(TestCase):
     def test_exists_hint(self):
         AuthorFactory()
+
         for exists_calls in range(1, 5):
             qs = Author.objects.all()
             qs._fetch_all()
@@ -461,6 +457,7 @@ class TestExistsHint(TestCase):
 class TestIterator(TestCase):
     def test_iterator(self):
         AuthorFactory()
+
         qs = Author.objects.all()
         for el in qs.iterator():
             self.assertTrue(el)
@@ -482,8 +479,7 @@ class TestRelatedField(TestCase):
 
     def test_related_manager_field(self):
         category = CategoryFactory()
-        for _ in range(3):
-            BookFactory(category=category)
+        BookFactory.create_batch(3, category=category)
 
         category = Category.objects.last()
         books = category.books.all()
@@ -494,7 +490,7 @@ class TestRelatedField(TestCase):
 
 class TestDepth(TestCase):
     def test_depth(self):
-        BookFactory(authors=[AuthorFactory() for _ in range(2)])
+        BookFactory(authors=AuthorFactory.create_batch(2))
         book = Book.objects.get()
         category = book.category
         authors = book.authors.all()
@@ -512,8 +508,9 @@ class TestDepth(TestCase):
 
 class TestAttributesAccessed(TestCase):
     def test_attributes_accessed(self):
+        authors = AuthorFactory.create_batch(3)
         for _ in range(2):
-            BookFactory(authors=[AuthorFactory() for _ in range(2)])
+            BookFactory(authors=random.sample(authors, 2))
 
         qs = Book.objects.select_related("category")
         for obj in qs:
@@ -543,7 +540,7 @@ class TestInheritance(TestCase):
 
 class TestM2MThroughModels(TestCase):
     def test_m2m_through_models_are_tracked(self):
-        BookFactory(authors=[AuthorFactory() for _ in range(3)])
+        BookFactory(authors=AuthorFactory.create_batch(3))
 
         BookAuthors = Book.authors.through
         qs = BookAuthors.objects.all()

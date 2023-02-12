@@ -334,13 +334,7 @@ class QuerySetTracker(dict):
         iterable_class=None,
         track_attributes_accessed=False,
     ):
-        super().__init__()
-        self.num_ready = 0
-        self.constructed = set()
-        self.related_queryset = None
-        self._iter_done = self._result_cache_collected = False
-
-        self.update(
+        super().__init__(
             sql="",
             num_instances=0,
             model=queryset.model,
@@ -348,11 +342,22 @@ class QuerySetTracker(dict):
             traceback=get_traceback(),
         )
 
+        self.num_ready = 0
+        self.constructed = set()
+        self.related_queryset = None
+        self._iter_done = self._result_cache_collected = False
+
         if iterable_class:
             self["iterable_class"] = iterable_class
 
         if track_attributes_accessed:
             self["attributes_accessed"] = HashableCounter()
+
+        if (request := get_request()) is not DUMMY_REQUEST:
+            self.request_tracker = request._tracker
+            self.request_tracker.num_queries += 1
+        else:
+            self.request_tracker = DummyRequestTracker
 
         if (instance := queryset._hints.get("instance")) and (
             instance_tracker := getattr(instance, "_tracker", None)
@@ -360,12 +365,6 @@ class QuerySetTracker(dict):
             instance_tracker.queryset.add_related_queryset(self)
             if field := queryset._hints.get("field"):
                 self["field"] = type(instance), field
-
-        if (request := get_request()) is not DUMMY_REQUEST:
-            self.request_tracker = request._tracker
-            self.request_tracker.num_queries += 1
-        else:
-            self.request_tracker = DummyRequestTracker
 
         queryset._tracker = self
 

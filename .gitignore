@@ -25,7 +25,7 @@ htmlcov/
 db.sqlite3
 trackingsdb
 
-src/dj_tracker/static
+src/dj_tracker/static/dj_tracker/css/
 
 # Dev
 exp.py

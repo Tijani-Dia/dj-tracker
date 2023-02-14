@@ -11,6 +11,7 @@
         </title>
         <link rel="stylesheet" href="{% static 'dj_tracker/css/main.css' %}">
         <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+        {% block extra_js %}{% endblock extra_js %}
     </head>
 
     <body class="font-sans text-slate-900 flex flex-col min-h-screen">

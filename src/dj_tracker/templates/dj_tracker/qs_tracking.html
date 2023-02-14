@@ -2,12 +2,11 @@
 
 <div class="mb-12"
      id="{{ query_pk }}"
-     {%  if qs_tracking.duplicate %}
-     data-duplicate="true"
-     {% endif %}
-     {%  if qs_tracking.related %}
-     data-related="true"
-     {% endif %}>
+     data-sql-id="{{ query.sql_id }}"
+     data-traceback-id="{{ query.traceback_id }}"
+     data-depth="{{ query.depth }}"
+     data-duplicate="{{ qs_tracking.duplicate }}"
+     data-related="{{ qs_tracking.related|length }}">
     <h5 class="text-xl my-2 bg-indigo-900 p-2 border-l-[12px] border-l-violet-100">
         <a href="{{ query.get_absolute_url }}" class="text-slate-50">{{ query_pk }}</a>
     </h5>

@@ -7,4 +7,4 @@ include README.md
 include setup.cfg
 include setup.py
 
-recursive-include src/dj_tracker *.html *.css *.py *.pyx *.h *.pxd *.c
+recursive-include src/dj_tracker *.html *.css *.js *.py *.pyx *.pxd *.h *.c

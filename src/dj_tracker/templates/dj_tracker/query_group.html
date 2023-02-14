@@ -1,5 +1,7 @@
 {% extends "dj_tracker/base.html" %}
 
+{% load static %}
+
 {% block title %}Query Group #{{ object.pk }}{% endblock %}
 
 {% block h1 %}
@@ -9,18 +11,51 @@
 
 {% block body %}
     <section class="flex">
-        <div class="w-1/4 pr-16">
-            <h5 class="section__subtitle">Filter</h5>
-            <div role="group">
-                <div class="mb-3 mt-1">
-                    <input type="checkbox" id="show-related" autocomplete="off">
-                    <label for="show-related">related</label>
-                </div>
-                <div>
-                    <input type="checkbox" id="show-duplicates" autocomplete="off">
-                    <label for="show-duplicates">duplicates</label>
-                </div>
-            </div>
+        <div class="shrink-0 pr-20 max-w-sm">
+            <form>
+                <fieldset>
+                    <legend class="section__subtitle">Filter</legend>
+                    <div class="mb-3">
+                        <input type="radio" id="show-related" name="select" data-select-type="related" value="related">
+                        <label class="ml-1.5" for="show-related">Related</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="show-duplicates" name="select" data-select-type="duplicates" value="duplicates">
+                        <label class="ml-1.5" for="show-duplicates">Duplicates</label>
+                    </div>
+                </fieldset>
+
+                {% if similar_sqls %}
+                    <fieldset>
+                        <legend class="section__subtitle">Similar SQLs</legend>
+                        {% for sql_id, objs in similar_sqls %}
+                            <div class="mb-3 flex justify-between">
+                                <label for="show-sql-{{ sql_id }}" class="shrink-0 flex items-center mr-5">
+                                    <span class="rounded-pill mr-1.5">{{ objs }}</span>
+                                    <span>{{ sql_id }}</span>
+                                </label>
+                                <input type="radio" id="show-sql-{{ sql_id }}" name="select" data-select-type="sql" value="{{ sql_id }}">
+                            </div>
+                        {% endfor %}
+                    </fieldset>
+                {% endif %}
+
+                {% if similar_tracebacks %}
+                    <fieldset>
+                        <legend class="section__subtitle">Similar Tracebacks</legend>
+                        {% for traceback_id, objs in similar_tracebacks %}
+                            <div class="mb-3 flex justify-between">
+                                <label for="show-traceback-{{ traceback_id }}" class="shrink-0 flex items-center mr-5">
+                                    <span class="rounded-pill mr-1.5">{{ objs }}</span>
+                                    <span>{{ traceback_id }}</span>
+                                </label>
+                                <input type="radio" id="show-traceback-{{ traceback_id }}" name="select" data-select-type="traceback" value="{{ traceback_id }}">
+                            </div>
+                        {% endfor %}
+                    </fieldset>
+                {% endif %}
+            </form>
+
             <h5 class="section__subtitle mt-4">Requests</h5>
             <ol>
                 {% for request in requests %}
@@ -30,7 +65,7 @@
                 {% endfor %}
             </ol>
         </div>
-        <div class="w-3/4">
+        <div class="grow">
             <h5 class="section__subtitle">Queries</h5>
             <div>
                 {% for qs_tracking in qs_trackings %}
@@ -39,40 +74,8 @@
             </div>
         </div>
     </section>
+{% endblock %}
 
-    {{ query_pks|json_script:"query-pks" }}
-
-    <script>
-        const queryPKs = JSON.parse(document.getElementById("query-pks").textContent, (k, v) => v);
-        const showDuplicates = document.querySelector("#show-duplicates");
-        const showRelated = document.querySelector("#show-related");
-        showDuplicates.addEventListener("click", e => {
-            const display = showDuplicates.checked ? "none" : "";
-            if (showRelated.checked) {
-                showRelated.checked = false;
-            }
-            queryPKs.forEach(queryPK => {
-                const el = document.getElementById(queryPK);
-                if (!el.dataset.duplicate) {
-                    el.style.display = display;
-                } else if (el.style.display === "none") {
-                    el.style.display = "";
-                }
-            })
-        })
-        showRelated.addEventListener("click", e => {
-            const display = showRelated.checked ? "none" : "";
-            if (showDuplicates.checked) {
-                showDuplicates.checked = false;
-            }
-            queryPKs.forEach(queryPK => {
-                const el = document.getElementById(queryPK);
-                if (!el.dataset.related) {
-                    el.style.display = display;
-                } else if (el.style.display === "none") {
-                    el.style.display = "";
-                }
-            })
-        })
-    </script>
+{% block extra_js %}
+    <script src="{% static 'dj_tracker/js/query_group.js' %}"></script>
 {% endblock %}

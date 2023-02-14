@@ -1,3 +1,6 @@
+from collections import Counter
+from operator import itemgetter
+
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Max, Prefetch, Sum
 from django.db.models.functions import Coalesce
@@ -93,23 +96,21 @@ class QueryGroupView(DetailView):
         return QueryGroup.objects.annotate_num_queries()
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        pk = self.object.pk
-        context["requests"] = Request.objects.filter(
-            trackings__query_group_id=pk
-        ).distinct()
-
+        sqls = Counter()
+        tracebacks = Counter()
+        query_group_id = self.object.pk
         qs_trackings = (
-            QuerySetTracking.objects.filter(query_group_id=self.object.pk)
+            QuerySetTracking.objects.filter(query_group_id=query_group_id)
             .select_related("query__model", "query__field__model")
             .iterator()
         )
         trackings = {obj.query_id: obj for obj in qs_trackings}
-        pks = []
+
         for tracking in trackings.values():
             query = tracking.query
             if not (parent_pk := query.related_queryset_id):
-                pks.append(str(query.pk))
+                sqls[query.sql_id] += 1
+                tracebacks[query.traceback_id] += 1
                 continue
 
             # May raise KeyError.
@@ -121,10 +122,25 @@ class QueryGroupView(DetailView):
                 related[field] = []
             related[field].append(tracking)
 
-        context["qs_trackings"] = (
-            tracking for tracking in trackings.values() if tracking.query.depth == 0
+        context = super().get_context_data(**kwargs)
+        context.update(
+            qs_trackings=(
+                tracking for tracking in trackings.values() if tracking.query.depth == 0
+            ),
+            similar_sqls=sorted(
+                (item for item in sqls.items() if item[1] > 1),
+                key=itemgetter(1),
+                reverse=True,
+            ),
+            similar_tracebacks=sorted(
+                (item for item in tracebacks.items() if item[1] > 1),
+                key=itemgetter(1),
+                reverse=True,
+            ),
+            requests=Request.objects.filter(
+                trackings__query_group_id=query_group_id
+            ).distinct(),
         )
-        context["query_pks"] = pks
         return context
 
 

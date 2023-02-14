@@ -5,7 +5,7 @@ format:
 	flake8 src/dj_tracker tests tutorial setup.py manage.py
 
 format-client:
-	npx prettier --write docs README.md tutorial/README.md styles *.js --tab-width=4
+	npx prettier --write docs README.md tutorial/README.md styles *.js src/dj_tracker/static/dj_tracker/js --tab-width=4
 	npx prettier --write *.yml .github --tab-width=2
 
 format-html:

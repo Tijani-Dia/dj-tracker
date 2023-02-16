@@ -4,6 +4,10 @@ repo_url: https://github.com/tijani-dia/dj-tracker
 repo_name: tijani-dia/dj-tracker
 theme:
   name: material
+extra:
+  analytics:
+    provider: google
+    property: G-68QPWVSX21
 
 nav:
   - Home: index.md

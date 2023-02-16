@@ -18,22 +18,20 @@ Let's update our view as follows:
 
 ```python
 def books_list(request):
-    context = {
-        "books": Book.objects.select_related("author", "category")
-    }
-    return render(request, "books.html", context)
+    books = Book.objects.select_related("author", "category")
+    return render(request, "books.html", {"books": books})
 ```
 
 and run our benchmark:
 
 ```shell
-Time in ms (25 calls) - Min: 112.99, Max: 165.69, Avg: 129.65
+Time in ms (25 calls) - Min: 110.51, Max: 209.23, Avg: 134.07
 
-Memory - size in KiB (25 calls) - Min: 17584.45, Max: 17974.71, Avg: 17627.35
-Memory - peak in KiB (25 calls) - Min: 18732.30, Max: 19122.25, Avg: 18775.29
+Memory - size in KiB (25 calls) - Min: 17795.50, Max: 18185.41, Avg: 17838.28
+Memory - peak in KiB (25 calls) - Min: 19154.29, Max: 19544.01, Avg: 19197.16
 ```
 
-Our view renders in just 130ms now! That's more than 10x speedup compared to our previous version in terms of speed gains. We can also notice that this version uses 2Mb less memory.
+Our view renders in just 135ms now! That's more than 12x speedup compared to our previous version in terms of speed gains. We can also notice that this version uses 2Mb less memory.
 
 Refer to the Django documentation for more information on [`select_related`](https://docs.djangoproject.com/en/4.1/ref/models/querysets/#select-related) and [`prefetch_related`](https://docs.djangoproject.com/en/4.1/ref/models/querysets/#prefetch-related).
 

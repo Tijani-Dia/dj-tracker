@@ -24,24 +24,25 @@ Let's update our view as follows:
 
 ```python
 def books_list(request):
-    context = {
-        "books": Book.objects.select_related("author", "category").only(
-            "title", "category__name", "author__first_name", "author__last_name"
-        )
-    }
-    return render(request, "books.html", context)
+    books = Book.objects.select_related("category", "author").only(
+        "title",
+        "category__name",
+        "author__first_name",
+        "author__last_name",
+    )
+    return render(request, "books.html", {"books": books})
 ```
 
 And run our profilers:
 
 ```shell
-Time in ms (25 calls) - Min: 100.20, Max: 148.85, Avg: 115.76
+Time in ms (25 calls) - Min: 94.91, Max: 137.29, Avg: 107.60
 
-Memory - size in KiB (25 calls) - Min: 2702.77, Max: 3028.50, Avg: 2735.80
-Memory - peak in KiB (25 calls) - Min: 3850.62, Max: 4175.73, Avg: 3883.74
+Memory - size in KiB (25 calls) - Min: 2913.94, Max: 3239.59, Avg: 2946.71
+Memory - peak in KiB (25 calls) - Min: 4272.72, Max: 4597.70, Avg: 4305.58
 ```
 
-We can notice a small speed gain of around 15ms in average. However, we're now just using around 2.7MB; compared the previous 17.6MB we were using, it's a huge improvement - mostly explained by the fact that we're no longer loading the large `summary` and `biography` fields.
+We can notice a small speed gain of around 30ms in average. However, we're now just using around 3MB; compared the previous 17.8MB we were using, it's a huge improvement - mostly explained by the fact that we're no longer loading the large `summary` and `biography` fields.
 
 If we go to the query view, the fields stats will now look like this:
 

@@ -12,14 +12,20 @@ Let's update our view to use `.values`:
 
 ```python
 def books_list(request):
-    only = ("title", "category__name", "author__first_name", "author__last_name")
-    context = {
-        "books": Book.objects.select_related("author", "category")
-        .only(*only)
-        .values(*only)
-    }
-    return render(request, "books.html", context)
+    books = Book.objects.values(
+        "title",
+        "category__name",
+        "author__first_name",
+        "author__last_name",
+    )
+    return render(request, "books.html", {"books": books})
 ```
+
+---
+
+Django will only fetch the fields we passed in to the `.values` method, so we can remove the `.only` call as it's redundant. See docs on the [`.values`](https://docs.djangoproject.com/en/4.0/ref/models/querysets/#values) method.
+
+---
 
 Our query will now return dictionary objects instead of model instances. An instance will have the following structure:
 
@@ -36,7 +42,14 @@ Let's update our template to match this new structure:
 
 ```html
 {% for book in books %}
-    {{ book.title }} -({{ book.author__first_name }} {{book.author__last_name }}) - {{ book.category__name }}
+    <h4>{{ book.title }}</h4>
+    <dl>
+        <dt>Author</dt>
+        <dd>{{ book.author__first_name }} {{ book.author__last_name }}</dd>
+
+        <dt>Category</dt>
+        <dd>{{ book.category__name }}</dd>
+    </dl>
 {% endfor %}
 ```
 
@@ -45,13 +58,13 @@ Let's update our template to match this new structure:
 Let's now run our profilers to see how our view performs:
 
 ```console
-Time in ms (25 calls) - Min: 40.05, Max: 72.93, Avg: 47.13
+Time in ms (25 calls) - Min: 39.77, Max: 64.72, Avg: 44.71
 
-Memory - size in KiB (25 calls) - Min: 1008.73, Max: 1154.21, Avg: 1030.85
-Memory - peak in KiB (25 calls) - Min: 2156.58, Max: 2302.35, Avg: 2178.71
+Memory - size in KiB (25 calls) - Min: 1219.71, Max: 1365.07, Avg: 1241.87
+Memory - peak in KiB (25 calls) - Min: 2578.51, Max: 2724.15, Avg: 2600.67
 ```
 
-Our new version is in average 2.5x faster (previous average was 115.76ms) and uses 2.7x less memory as well.
+Our new version is in average 2x faster (previous average was 107.6ms) and uses 2.5x less memory as well.
 
 This can be explained by the fact that creating and manipulating dictionaries is cheaper than doing the same with model instances - both in speed and in memory terms.
 

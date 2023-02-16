@@ -91,15 +91,22 @@ from .models import Book
 
 
 def books_list(request):
-    context = {"books": Book.objects.all()}
-    return render(request, "books.html", context)
+    books = Book.objects.all()
+    return render(request, "books.html", {"books": books})
 ```
 
 and this is the corresponding template:
 
 ```html
 {% for book in books %}
-    {{ book.title }} -({{ book.author.first_name }} {{ book.author.last_name }}) - {{ book category }}
+    <h4>{{ book.title }}</h4>
+    <dl>
+        <dt>Author</dt>
+        <dd>{{ book.author.first_name }} {{ book.author.last_name }}</dd>
+
+        <dt>Category</dt>
+        <dd>{{ book.category.name }}</dd>
+    </dl>
 {% endfor %}
 ```
 
@@ -133,10 +140,10 @@ We run each of these steps in a new process to have consistent results.
 Let's now run the first benchmark to see how our view performs:
 
 ```shell
-Time in ms (25 calls) - Min: 1680.77, Max: 1975.24, Avg: 1735.77
+Time in ms (25 calls) - Min: 1681.04, Max: 1981.69, Avg: 1740.82
 
-Memory - size in KiB (25 calls) - Min: 19477.24, Max: 19855.44, Avg: 19579.39
-Memory - peak in KiB (25 calls) - Min: 20624.29, Max: 21003.30, Avg: 20726.55
+Memory - size in KiB (25 calls) - Min: 19684.88, Max: 20065.00, Avg: 19788.62
+Memory - peak in KiB (25 calls) - Min: 21044.07, Max: 21425.05, Avg: 21147.91
 ```
 
 Our view takes up to 2s to render and uses around 20Mb in average (in my machine)!

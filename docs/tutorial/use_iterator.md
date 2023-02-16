@@ -20,7 +20,14 @@ For the sake of this tutorial, we'll use a [custom templatetag](https://github.c
 {% load iterate_tags %}
 
 {% iterate book in books %}
-    {{ book.title }} -({{ book.author__first_name }} {{ book.author__last_name }}) - {{ book.category__name }
+    <h4>{{ book.title }}</h4>
+    <dl>
+        <dt>Author</dt>
+        <dd>{{ book.author__first_name }} {{ book.author__last_name }}</dd>
+
+        <dt>Category</dt>
+        <dd>{{ book.category__name }}</dd>
+    </dl>
 {% enditerate %}
 ```
 
@@ -34,26 +41,25 @@ Let's go ahead and update our view to use `.iterator`:
 
 ```python
 def books_list(request):
-    only = ("title", "category__name", "author__first_name", "author__last_name")
-    context = {
-        "books": Book.objects.select_related("author", "category")
-        .only(*only)
-        .values(*only)
-        .iterator()
-    }
-    return render(request, "books.html", context)
+    books = Book.objects.values(
+        "title",
+        "category__name",
+        "author__first_name",
+        "author__last_name",
+    ).iterator()
+    return render(request, "books.html", {"books": books})
 ```
 
 and run the benchmarks:
 
 ```console
-Time in ms (25 calls) - Min: 42.37, Max: 63.76, Avg: 48.04
+Time in ms (25 calls) - Min: 41.26, Max: 66.69, Avg: 46.87
 
-Memory - size in KiB (25 calls) - Min: 142.85, Max: 381.54, Avg: 154.87
-Memory - peak in KiB (25 calls) - Min: 1537.41, Max: 1776.59, Avg: 1550.21
+Memory - size in KiB (25 calls) - Min: 353.71, Max: 592.86, Avg: 365.82
+Memory - peak in KiB (25 calls) - Min: 1715.51, Max: 1953.51, Avg: 1727.70
 ```
 
-Our timings haven't changed much but we are now only using 0.15MB in average (the previous average was 1MB) with a max peak at 1.5MB. That's a very nice memory improvement without trading off speed.
+Our timings haven't changed much but we are now only using 0.3MB in average (the previous average was 1.2MB). That's a 4x memory improvement without trading off speed.
 
 ## Summary
 

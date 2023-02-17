@@ -564,7 +564,7 @@ class QueryPromise(Promise):
         if not (prev_duration := cls.durations.get(cache_key)):
             cls.durations[cache_key] = duration
         else:
-            cls.durations[cache_key] = prev_duration + duration / 2
+            cls.durations[cache_key] = (prev_duration + duration) / 2
 
     @classmethod
     def update_durations(cls):
@@ -576,7 +576,7 @@ class QueryPromise(Promise):
         for query in to_update:
             avg_duration = pop_average_duration(query.cache_key)
             if prev_duration := query.average_duration:
-                query.average_duration = prev_duration + avg_duration / 2
+                query.average_duration = (prev_duration + avg_duration) / 2
             else:
                 query.average_duration = avg_duration
 

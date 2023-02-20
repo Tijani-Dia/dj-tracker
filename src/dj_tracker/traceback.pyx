@@ -31,7 +31,7 @@ cdef extern from "pythoncapi_compat.h":
     PyFrameObject *PyFrame_GetBack(PyFrameObject*)
     PyCodeObject *PyFrame_GetCode(PyFrameObject*)
     PyObject *PyFrame_GetGlobals(PyFrameObject*)
-    PyObject *PyFrame_GetVar(PyFrameObject*, PyObject*)
+    PyObject *PyFrame_GetVar(PyFrameObject*, PyObject*) except NULL
 
 
 @cython.freelist(512)

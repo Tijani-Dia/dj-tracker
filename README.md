@@ -20,19 +20,19 @@
 
 ## Features
 
--   Detailed field usage of model instances
--   Report unused fields in a model instance and provides hints on when to use `.defer` and `.only`
--   Report model instance attributes access and provides hints on when to use `.values` or `.values_list`
--   Report cache hits and provides hints on when to use `iterator`
--   Provides hints on when to use `.count`, `.contains`, `.exists`
--   Detect N+1 queries
--   Detect when a deferred field is loaded
--   and many more insights into your queries with minimized overhead....
+- Detailed field usage of model instances
+- Report unused fields in a model instance and provides hints on when to use `.defer` and `.only`
+- Report model instance attributes access and provides hints on when to use `.values` or `.values_list`
+- Report cache hits and provides hints on when to use `iterator`
+- Provides hints on when to use `.count`, `.contains`, `.exists`
+- Detect N+1 queries
+- Detect when a deferred field is loaded
+- and many more insights into your queries with minimized overhead....
 
 ## Requirements
 
--   Python: `>=3.8`
--   Django: `>=3.2`
+- Python: `>=3.8`
+- Django: `>=3.2`
 
 ## Getting started
 

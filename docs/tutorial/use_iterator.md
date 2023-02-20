@@ -18,16 +18,15 @@ For the sake of this tutorial, we'll use a [custom templatetag](https://github.c
 
 ```html
 {% load iterate_tags %}
-
 {% iterate book in books %}
-    <h4>{{ book.title }}</h4>
-    <dl>
-        <dt>Author</dt>
-        <dd>{{ book.author__first_name }} {{ book.author__last_name }}</dd>
+  <h4>{{ book.title }}</h4>
+  <dl>
+    <dt>Author</dt>
+    <dd>{{ book.author__first_name }} {{ book.author__last_name }}</dd>
 
-        <dt>Category</dt>
-        <dd>{{ book.category__name }}</dd>
-    </dl>
+    <dt>Category</dt>
+    <dd>{{ book.category__name }}</dd>
+  </dl>
 {% enditerate %}
 ```
 

@@ -6,8 +6,8 @@ We can also keep track of the view's performance over time in the `dj-tracker` d
 
 ## Misc
 
--   `dj-tracker` can automatically provide these additional hints: [`Use .count`](https://docs.djangoproject.com/en/4.1/topics/db/optimization/#use-queryset-count), [`Use .exists`](https://docs.djangoproject.com/en/4.1/topics/db/optimization/#use-queryset-exists), [`Use .contains`](https://docs.djangoproject.com/en/4.1/topics/db/optimization/#use-queryset-contains-obj)
+- `dj-tracker` can automatically provide these additional hints: [`Use .count`](https://docs.djangoproject.com/en/4.1/topics/db/optimization/#use-queryset-count), [`Use .exists`](https://docs.djangoproject.com/en/4.1/topics/db/optimization/#use-queryset-exists), [`Use .contains`](https://docs.djangoproject.com/en/4.1/topics/db/optimization/#use-queryset-contains-obj)
 
--   You may not necesarily be able to apply all optimisations we did for our books query, however in many cases, you'll be able to apply some of them.
+- You may not necesarily be able to apply all optimisations we did for our books query, however in many cases, you'll be able to apply some of them.
 
--   Use the `.iterator` optimisation with caution, ignoring the hint shown in the queryset page if necessary.
+- Use the `.iterator` optimisation with caution, ignoring the hint shown in the queryset page if necessary.

@@ -99,14 +99,14 @@ and this is the corresponding template:
 
 ```html
 {% for book in books %}
-    <h4>{{ book.title }}</h4>
-    <dl>
-        <dt>Author</dt>
-        <dd>{{ book.author.first_name }} {{ book.author.last_name }}</dd>
+<h4>{{ book.title }}</h4>
+<dl>
+  <dt>Author</dt>
+  <dd>{{ book.author.first_name }} {{ book.author.last_name }}</dd>
 
-        <dt>Category</dt>
-        <dd>{{ book.category.name }}</dd>
-    </dl>
+  <dt>Category</dt>
+  <dd>{{ book.category.name }}</dd>
+</dl>
 {% endfor %}
 ```
 
@@ -131,9 +131,9 @@ urlpatterns = [
 
 We'll use the following methodology to profile the view:
 
--   Make 25 requests sequentially to the `/time/` endpoint
--   Make 25 requests sequentially to the `/memory/` endpoint
--   Make 1 request to the books endpoint with `dj-tracker` running
+- Make 25 requests sequentially to the `/time/` endpoint
+- Make 25 requests sequentially to the `/memory/` endpoint
+- Make 1 request to the books endpoint with `dj-tracker` running
 
 We run each of these steps in a new process to have consistent results.
 

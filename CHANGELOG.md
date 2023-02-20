@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
--   CHANGELOG - thanks to [@zerolab](https://github.com/zerolab)
+- CHANGELOG - thanks to [@zerolab](https://github.com/zerolab)
 
 ### Changed
 

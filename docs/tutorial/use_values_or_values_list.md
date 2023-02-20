@@ -42,14 +42,14 @@ Let's update our template to match this new structure:
 
 ```html
 {% for book in books %}
-    <h4>{{ book.title }}</h4>
-    <dl>
-        <dt>Author</dt>
-        <dd>{{ book.author__first_name }} {{ book.author__last_name }}</dd>
+<h4>{{ book.title }}</h4>
+<dl>
+  <dt>Author</dt>
+  <dd>{{ book.author__first_name }} {{ book.author__last_name }}</dd>
 
-        <dt>Category</dt>
-        <dd>{{ book.category__name }}</dd>
-    </dl>
+  <dt>Category</dt>
+  <dd>{{ book.category__name }}</dd>
+</dl>
 {% endfor %}
 ```
 

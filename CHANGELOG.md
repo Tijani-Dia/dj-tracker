@@ -8,12 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
-- CHANGELOG - thanks to [@zerolab](https://github.com/zerolab)
-
 ### Changed
 
 ### Fixed
 
-- Catch errors raised in `PyFrame_GetVar`
-
 ### Removed
+
+## [0.5.1a0] - 2023-02-20
+
+### Added
+
+- CHANGELOG - thanks to [@zerolab](https://github.com/zerolab)
+
+### Fixed
+
+- Catch errors raised in `PyFrame_GetVar`

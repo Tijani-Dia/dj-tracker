@@ -55,7 +55,7 @@ class TestAttributeTracker(TestCase):
         self.assertEqual(tracker["title"].get, 2)
         self.assertEqual(tracker["title"].set, 1)
         related_qs_tracker = tracker.queryset.related_querysets[0]
-        self.assertIs(related_qs_tracker.related_queryset, tracker.queryset)
+        self.assertIs(related_qs_tracker.related_queryset(), tracker.queryset)
         self.assertEqual(related_qs_tracker["field"], (Book, "title"))
 
 
@@ -79,7 +79,7 @@ class TestForwardManyToOneTracker(TestCase):
         category = book.category
         self.assertEqual(
             get_instance_tracker(book).queryset,
-            get_instance_tracker(category).queryset.related_queryset,
+            get_instance_tracker(category).queryset.related_queryset(),
         )
 
 
@@ -105,7 +105,7 @@ class TestForwardOneToOneTracker(TestCase):
         user = author.user
         self.assertEqual(
             get_instance_tracker(author).queryset,
-            get_instance_tracker(user).queryset.related_queryset,
+            get_instance_tracker(user).queryset.related_queryset(),
         )
 
 
@@ -130,7 +130,7 @@ class TestReverseOneToOneTracker(TestCase):
         author = user.author
         self.assertEqual(
             get_instance_tracker(user).queryset,
-            get_instance_tracker(author).queryset.related_queryset,
+            get_instance_tracker(author).queryset.related_queryset(),
         )
 
 
@@ -157,7 +157,7 @@ class TestReverseManyToOneTracker(TestCase):
         self.assertEqual(len(books), 1)
         self.assertEqual(
             get_instance_tracker(category).queryset,
-            get_instance_tracker(books[0]).queryset.related_queryset,
+            get_instance_tracker(books[0]).queryset.related_queryset(),
         )
 
 
@@ -188,12 +188,12 @@ class TestManyToManyTracker(TestCase):
         author = book.authors.first()
         self.assertEqual(
             get_instance_tracker(book).queryset,
-            get_instance_tracker(author).queryset.related_queryset,
+            get_instance_tracker(author).queryset.related_queryset(),
         )
         books = author.books.all()
         self.assertEqual(
             get_instance_tracker(author).queryset,
-            get_instance_tracker(books[0]).queryset.related_queryset,
+            get_instance_tracker(books[0]).queryset.related_queryset(),
         )
 
 
@@ -221,7 +221,7 @@ class TestGenericForeignKeyTracker(TestCase):
         book = comment.content_object
         self.assertEqual(
             get_instance_tracker(comment).queryset,
-            get_instance_tracker(book).queryset.related_queryset,
+            get_instance_tracker(book).queryset.related_queryset(),
         )
 
 
@@ -252,7 +252,7 @@ class TestReverseGenericManyToOneTracker(TestCase):
 
         self.assertEqual(
             get_instance_tracker(book).queryset,
-            get_instance_tracker(comments[0]).queryset.related_queryset,
+            get_instance_tracker(comments[0]).queryset.related_queryset(),
         )
 
 
@@ -273,7 +273,7 @@ class TestPrefetchRelated(TestCase):
             book_tracker = get_instance_tracker(books[0])
             self.assertEqual(book.category, category)
             self.assertIs(
-                category_tracker.queryset, book_tracker.queryset.related_queryset
+                category_tracker.queryset, book_tracker.queryset.related_queryset()
             )
 
             self.assertEqual(category_tracker["books"].get, 3)
@@ -320,7 +320,7 @@ class TestSelectRelated(TestCase):
             )
 
         self.assertIs(
-            get_instance_tracker(comment.user.author).queryset.related_queryset,
+            get_instance_tracker(comment.user.author).queryset.related_queryset(),
             get_instance_tracker(comment).queryset,
         )
 

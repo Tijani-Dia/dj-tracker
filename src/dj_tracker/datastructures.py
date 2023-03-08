@@ -309,9 +309,11 @@ class QuerySetTracker(dict):
     }
 
     __slots__ = (
+        "__weakref__",
         "duration",
         "num_ready",
         "request_tracker",
+        "is_related",
         "related_queryset",
         "_iter_done",
         "_result_cache_collected",
@@ -325,7 +327,8 @@ class QuerySetTracker(dict):
             setattr(self, name, value)
             self.constructed.add(name)
             return value
-        raise AttributeError
+
+        raise AttributeError(name)
 
     def __init__(
         self,
@@ -344,7 +347,7 @@ class QuerySetTracker(dict):
 
         self.num_ready = 0
         self.constructed = set()
-        self.related_queryset = None
+        self.is_related = False
         self._iter_done = self._result_cache_collected = False
 
         if iterable_class:
@@ -370,7 +373,8 @@ class QuerySetTracker(dict):
 
     def add_related_queryset(self, qs_tracker):
         self.related_querysets.append(qs_tracker)
-        qs_tracker.related_queryset = self
+        qs_tracker.is_related = True
+        qs_tracker.related_queryset = weak_reference(self)
         qs_tracker["depth"] = self.get("depth", 0) + 1
 
     def add_deferred_field(self, field, instance):
@@ -439,9 +443,13 @@ class QuerySetTracker(dict):
         self.duration = duration
         self._iter_done = True
 
-        if not (related_qs := self.related_queryset):
+        if not self.is_related:
             Collector.add_tracker(self)
-        elif self["num_instances"] == 1 and "deferred_fields" in related_qs.constructed:
+        elif (
+            self["num_instances"] == 1
+            and (related_qs := self.related_queryset())
+            and "deferred_fields" in related_qs.constructed
+        ):
             deferred_fields = related_qs.deferred_fields
             instance = queryset._hints["instance"]
             db_instance = self.instance_trackers[("", queryset.model)][0].object()
@@ -479,7 +487,6 @@ class QuerySetTracker(dict):
             for related_tracker in self.related_querysets:
                 related_tracker["related_queryset_id"] = query_id
                 Collector.add_tracker(related_tracker)
-                del related_tracker.related_queryset
 
         self.request_tracker.add_query(query_id)
 

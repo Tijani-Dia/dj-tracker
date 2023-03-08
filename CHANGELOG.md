@@ -14,6 +14,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Removed
 
+## [0.5.2a0] - 2023-03-08
+
+### Added
+
+- Ignore `runtests.py` files in tracebacks
+
+### Fixed
+
+- `AttributeError` when a queryset tracker is saved before Django finishes iterating over all of its related querysets
+
 ## [0.5.1a0] - 2023-02-20
 
 ### Added

@@ -72,6 +72,7 @@ def _get_ignored_modules():
         "django/contrib/staticfiles",
         "django/utils/deprecation.py",
         "manage.py",
+        "runtests.py",
         *DJ_TRACKER_SETTINGS.pop("IGNORE_MODULES"),
     }
 

@@ -9,10 +9,7 @@ class FieldDescriptor:
         self.attname = attname
 
     def __get__(self, instance, cls):
-        if instance is None:
-            return self.descriptor
-
-        if instance_tracker := getattr(instance, "_tracker", None):
+        if (instance_tracker := getattr(instance, "_tracker", None)) is not None:
             instance_tracker.get_field_tracker(self.attname).get += 1
 
         return self.descriptor.__get__(instance, cls)
@@ -32,8 +29,10 @@ class DeferredAttributeDescriptor(FieldDescriptor):
         @wraps(_check_parent_chain)
         def wrapper(instance):
             value = _check_parent_chain(instance)
-            if value is None and (
-                instance_tracker := getattr(instance, "_tracker", None)
+            if (
+                value is None
+                and (instance_tracker := getattr(instance, "_tracker", None))
+                is not None
             ):
                 instance_tracker.queryset.add_deferred_field(attname, instance)
 
@@ -43,7 +42,7 @@ class DeferredAttributeDescriptor(FieldDescriptor):
 
     def __set__(self, instance, value):
         instance.__dict__[self.attname] = value
-        if instance_tracker := getattr(instance, "_tracker", None):
+        if (instance_tracker := getattr(instance, "_tracker", None)) is not None:
             instance_tracker.get_field_tracker(self.attname).set += 1
 
     def __delete__(self, instance):
@@ -55,7 +54,7 @@ class EditableFieldDescriptor(FieldDescriptor):
 
     def __set__(self, instance, value):
         self.descriptor.__set__(instance, value)
-        if instance_tracker := getattr(instance, "_tracker", None):
+        if (instance_tracker := getattr(instance, "_tracker", None)) is not None:
             instance_tracker.get_field_tracker(self.attname).set += 1
 
 

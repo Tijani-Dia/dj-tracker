@@ -198,6 +198,17 @@ class QueryGroupManager(models.Manager):
         )
         return self.annotate(num_queries=models.Subquery(num_queries))
 
+    def annotate_n_plus_one(self):
+        return self.annotate(
+            n_plus_one=models.Exists(
+                QuerySetTracking.objects.filter(
+                    num_occurrences__gt=1,
+                    query_group_id=models.OuterRef("pk"),
+                    query__related_queryset__isnull=False,
+                )
+            )
+        )
+
 
 class QueryGroup(Promisable):
     queries = models.ManyToManyField(Query, through="QuerySetTracking")
@@ -209,7 +220,9 @@ class QueryGroup(Promisable):
 
 class QuerySetTracking(models.Model):
     query = models.ForeignKey(Query, on_delete=models.CASCADE, related_name="trackings")
-    query_group = models.ForeignKey(QueryGroup, on_delete=models.CASCADE)
+    query_group = models.ForeignKey(
+        QueryGroup, on_delete=models.CASCADE, related_name="qs_trackings"
+    )
     # Number of occurrences of query in query_group.
     num_occurrences = models.PositiveSmallIntegerField()
 

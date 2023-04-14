@@ -112,6 +112,17 @@
                     </tbody>
                 </table>
             </div>
+            <div>
+                <h5 class="section__subtitle">N + 1</h5>
+                <table>
+                    <thead><tr><th>#</th></tr></thead>
+                    <tbody>
+                        {% for n_plus_one in n_plus_ones %}
+                            <tr><td><a href="{{ n_plus_one.get_absolute_url }}">{{ n_plus_one.pk }}</a></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </section>
 

@@ -37,7 +37,7 @@ DJ_TRACKER = {
 
 ### `COLLECTION_INTERVAL`
 
-Interval at which the `Collector` should save trackings. The default value is `5ms`.
+Interval at which the `Collector` should save trackings. The default value is `5s`.
 
 ```python
 DJ_TRACKER = {

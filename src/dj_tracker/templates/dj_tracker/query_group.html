@@ -68,8 +68,8 @@
         <div class="grow">
             <h5 class="section__subtitle">Queries</h5>
             <div>
-                {% for qs_tracking in qs_trackings %}
-                    {% include "dj_tracker/qs_tracking.html" with qs_tracking=qs_tracking query=qs_tracking.query query_pk=qs_tracking.query.pk %}
+                {% for query in queries %}
+                    {% include "dj_tracker/query.html" with query=query %}
                 {% endfor %}
             </div>
         </div>

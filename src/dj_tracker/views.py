@@ -1,4 +1,5 @@
 from collections import Counter
+from itertools import takewhile
 from operator import itemgetter
 
 from django.core.paginator import Paginator
@@ -8,14 +9,7 @@ from django.views.generic import TemplateView
 from django.views.generic.detail import DetailView
 from django.views.generic.list import ListView
 
-from dj_tracker.models import (
-    Field,
-    InstanceFieldTracking,
-    Query,
-    QueryGroup,
-    QuerySetTracking,
-    Request,
-)
+from dj_tracker.models import Field, InstanceFieldTracking, Query, QueryGroup, Request
 
 
 class HomeView(TemplateView):
@@ -52,6 +46,9 @@ class HomeView(TemplateView):
             .exclude(trackings__request__path__path="")
             .order_by("-num_queries")[:5]
         )
+        context["n_plus_ones"] = QueryGroup.objects.annotate_n_plus_one().filter(
+            n_plus_one=True
+        )[:5]
         return context
 
 
@@ -95,38 +92,50 @@ class QueryGroupView(DetailView):
     def get_queryset(self):
         return QueryGroup.objects.annotate_num_queries()
 
+    def get_query_from_qs_tracking(self, qs_tracking):
+        query = qs_tracking.query
+        # Copy the values from the QuerySetTracking to the Query for easier access in the template.
+        query.duplicate = qs_tracking.duplicate
+        query.num_occurrences = qs_tracking.num_occurrences
+        return query
+
     def get_context_data(self, **kwargs):
-        sqls = Counter()
-        tracebacks = Counter()
-        query_group_id = self.object.pk
-        qs_trackings = (
-            QuerySetTracking.objects.filter(query_group_id=query_group_id)
-            .select_related("query__model", "query__field__model")
-            .iterator()
-        )
-        trackings = {obj.query_id: obj for obj in qs_trackings}
+        qs_trackings = self.object.qs_trackings.select_related(
+            "query__model", "query__field__model"
+        ).order_by("query__depth")
+        queries = {qs_tracking.query_id: qs_tracking for qs_tracking in qs_trackings}
+        queries_iter = iter(tuple(queries.values()))
 
-        for tracking in trackings.values():
-            query = tracking.query
-            if not (parent_pk := query.related_queryset_id):
-                sqls[query.sql_id] += 1
-                tracebacks[query.traceback_id] += 1
-                continue
+        # Only show queries with depth 0 at the top level; related queries are shown inside their parent.
+        root_queries = list(takewhile(lambda x: x.query.depth == 0, queries_iter))
+        # To detect similar SQL queries and tracebacks at the top level.
+        sqls, tracebacks = Counter(), Counter()
+        for query in map(self.get_query_from_qs_tracking, root_queries):
+            sqls[query.sql_id] += 1
+            tracebacks[query.traceback_id] += 1
 
-            # May raise KeyError.
-            # Can happen when the related queryset comes from another request.
-            parent = trackings[parent_pk]
+        # Workout the related queries.
+        for query in map(self.get_query_from_qs_tracking, queries_iter):
+            parent_pk = query.related_queryset_id
+            try:
+                parent = queries[parent_pk]
+            except KeyError:
+                parent = queries[parent_pk] = query.related_queryset
+                parent.from_other_query_group = True
+                root_queries.append(parent)
+
+            # Ideally, we would use a defaultdict here, but it causes issues with template rendering.
             if not (related := getattr(parent, "related", None)):
                 related = parent.related = {}
             if (field := query.field) not in related:
                 related[field] = []
-            related[field].append(tracking)
+
+            related[field].append(query)
 
         context = super().get_context_data(**kwargs)
         context.update(
-            qs_trackings=(
-                tracking for tracking in trackings.values() if tracking.query.depth == 0
-            ),
+            # Normalise `queries` to a list of Query objects.
+            queries=(getattr(obj, "query", obj) for obj in root_queries),
             similar_sqls=sorted(
                 (item for item in sqls.items() if item[1] > 1),
                 key=itemgetter(1),
@@ -138,7 +147,7 @@ class QueryGroupView(DetailView):
                 reverse=True,
             ),
             requests=Request.objects.filter(
-                trackings__query_group_id=query_group_id
+                trackings__query_group=self.object
             ).distinct(),
         )
         return context

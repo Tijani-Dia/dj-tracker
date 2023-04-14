@@ -1,14 +1,19 @@
 {% load dj_tracker %}
 
 <div class="mb-12"
-     id="{{ query_pk }}"
+     id="{{ query.pk }}"
      data-sql-id="{{ query.sql_id }}"
      data-traceback-id="{{ query.traceback_id }}"
      data-depth="{{ query.depth }}"
-     data-duplicate="{{ qs_tracking.duplicate }}"
-     data-related="{{ qs_tracking.related|length }}">
-    <h5 class="text-xl my-2 bg-indigo-900 p-2 border-l-[12px] border-l-violet-100">
-        <a href="{{ query.get_absolute_url }}" class="text-slate-50">{{ query_pk }}</a>
+     data-duplicate="{{ query.duplicate }}"
+     data-related="{{ query.related|length }}">
+    <h5 class="text-xl my-2 bg-indigo-900 p-2 border-l-[12px] border-l-violet-100 flex justify-between">
+        <a href="{{ query.get_absolute_url }}" class="text-slate-50">{{ query.pk }}</a>
+        {% if query.from_other_query_group %}
+            <span class="rounded-pill" title="Indicates that this query (and not the related ones) comes from another request/query group.">
+                External
+            </span>
+        {% endif %}
     </h5>
     <dl class="flex flex-wrap text-lg m-[12px]">
         <dt class="w-1/3 font-medium text-slate-600 mb-2">
@@ -35,12 +40,12 @@
         <dd class="w-2/3">
             {{ query.average_duration_in_ms }} ms
         </dd>
-        {% if qs_tracking.duplicate %}
+        {% if query.duplicate %}
             <dt class="w-1/3 font-medium text-slate-600 mb-2">
                 Repeated
             </dt>
             <dd class="w-2/3">
-                {{ qs_tracking.num_occurrences }} time(s)
+                {{ query.num_occurrences }} time(s)
             </dd>
         {% endif %}
         {% if query.field %}
@@ -116,24 +121,24 @@
         {% endif %}
     </dl>
 
-    {% if qs_tracking.related %}
+    {% if query.related %}
         <h5 class="m-2 text-lg font-medium text-slate-600">Related</h5>
         <div id="query-{{ query_pk }}"
              x-data="{ current: null }"
              class="divide-y divide-slate-300 w-full ml-2">
-            {% for field, related_trackings in qs_tracking.related.items %}
+            {% for field, related_queries in query.related.items %}
                 <div x-data>
                     <div class="flex justify-between items-baseline py-3 px-1.5 bg-indigo-900 text-slate-50 border-l-8 border-l-violet-100 w-full">
                         <h2 class="leading-none">
                             <button @click="current = current === $root ? null : $root">{{ field }}</button>
                         </h2>
-                        {% with num_queries=related_trackings|total_queries %}
+                        {% with num_queries=related_queries|total_queries %}
                             <small class="text-muted">{{ num_queries }} quer{{ num_queries|pluralize:"y,ies" }}</small>
                         {% endwith %}
                     </div>
                     <div x-show="current === $root" class="my-4 mx-10">
-                        {% for related_qs in related_trackings %}
-                            {% include "dj_tracker/qs_tracking.html" with qs_tracking=related_qs query=related_qs.query query_pk=related_qs.query.pk %}
+                        {% for related_query in related_queries %}
+                            {% include "dj_tracker/query.html" with query=related_query %}
                         {% endfor %}
                     </div>
                 </div>

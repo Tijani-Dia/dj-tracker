@@ -1,5 +1,4 @@
 from collections import Counter
-from itertools import takewhile
 from operator import itemgetter
 
 from django.core.paginator import Paginator
@@ -46,9 +45,9 @@ class HomeView(TemplateView):
             .exclude(trackings__request__path__path="")
             .order_by("-num_queries")[:5]
         )
-        context["n_plus_ones"] = QueryGroup.objects.annotate_n_plus_one().filter(
-            n_plus_one=True
-        )[:5]
+        context[
+            "n_plus_ones"
+        ] = QueryGroup.objects.n_plus_one().order_by_latest_occurrence()[:5]
         return context
 
 
@@ -74,11 +73,8 @@ class URLPathTrackingsView(DetailView):
         query_groups = (
             QueryGroup.objects.annotate_num_queries()
             .filter(trackings__request_id=self.object.pk)
-            .annotate(
-                num_trackings=Count("trackings"),
-                latest_run_at=Max("trackings__started_at"),
-            )
-            .order_by("-latest_run_at")
+            .annotate(num_trackings=Count("trackings"))
+            .order_by_latest_occurrence()
         )
         context["page_obj"] = Paginator(query_groups, 7).get_page(
             self.request.GET.get("page")
@@ -104,21 +100,27 @@ class QueryGroupView(DetailView):
             "query__model", "query__field__model"
         ).order_by("query__depth")
         queries = {qs_tracking.query_id: qs_tracking for qs_tracking in qs_trackings}
-        queries_iter = iter(tuple(queries.values()))
 
-        # Only show queries with depth 0 at the top level; related queries are shown inside their parent.
-        root_queries = list(takewhile(lambda x: x.query.depth == 0, queries_iter))
-        # To detect similar SQL queries and tracebacks at the top level.
-        sqls, tracebacks = Counter(), Counter()
-        for query in map(self.get_query_from_qs_tracking, root_queries):
+        root_queries = []
+        sqls = Counter()
+        tracebacks = Counter()
+        for query in map(self.get_query_from_qs_tracking, qs_trackings):
+            if query.depth > 0:
+                # Only show queries with depth 0 at the top level;
+                # related queries are shown inside their parent.
+                break
+
+            root_queries.append(query)
             sqls[query.sql_id] += 1
             tracebacks[query.traceback_id] += 1
 
         # Workout the related queries.
-        for query in map(self.get_query_from_qs_tracking, queries_iter):
+        for query in map(
+            self.get_query_from_qs_tracking, qs_trackings[len(root_queries) :]
+        ):
             parent_pk = query.related_queryset_id
             try:
-                parent = queries[parent_pk]
+                parent = queries[parent_pk].query
             except KeyError:
                 parent = queries[parent_pk] = query.related_queryset
                 parent.from_other_query_group = True

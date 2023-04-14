@@ -14,7 +14,7 @@
                             #{{ query_group.pk }} - {{ query_group.num_queries }} queries
                         </a>
                         <div class="text-muted">
-                            {{ query_group.latest_run_at|date:"D d M Y" }} at {{ query_group.latest_run_at|time:"H:i" }}
+                            {{ query_group.latest_occurrence|date:"D d M Y" }} at {{ query_group.latest_occurrence|time:"H:i" }}
                         </div>
                     </div>
                     <span class="rounded-pill">{{ query_group.num_trackings }}</span>

@@ -187,16 +187,12 @@ class Query(Promisable):
         return round(self.average_duration * 1e-6, 2)
 
 
-class QueryGroupManager(models.Manager):
-    def annotate_num_queries(self):
-        # https://stackoverflow.com/questions/52027676/using-subquery-to-annotate-a-count
-        num_queries = (
-            QuerySetTracking.objects.filter(query_group_id=models.OuterRef("pk"))
-            .order_by()
-            .annotate(total=models.Func(models.F("num_occurrences"), function="Sum"))
-            .values("total")
-        )
-        return self.annotate(num_queries=models.Subquery(num_queries))
+class QueryGroupQuerySet(models.QuerySet):
+    def annotate_latest_occurrence(self):
+        return self.annotate(latest_occurrence=models.Max("trackings__started_at"))
+
+    def order_by_latest_occurrence(self):
+        return self.annotate_latest_occurrence().order_by("-latest_occurrence")
 
     def annotate_n_plus_one(self):
         return self.annotate(
@@ -209,10 +205,23 @@ class QueryGroupManager(models.Manager):
             )
         )
 
+    def n_plus_one(self):
+        return self.annotate_n_plus_one().filter(n_plus_one=True)
+
+    def annotate_num_queries(self):
+        # https://stackoverflow.com/questions/52027676/using-subquery-to-annotate-a-count
+        num_queries = (
+            QuerySetTracking.objects.filter(query_group_id=models.OuterRef("pk"))
+            .order_by()
+            .annotate(total=models.Func(models.F("num_occurrences"), function="Sum"))
+            .values("total")
+        )
+        return self.annotate(num_queries=models.Subquery(num_queries))
+
 
 class QueryGroup(Promisable):
     queries = models.ManyToManyField(Query, through="QuerySetTracking")
-    objects = QueryGroupManager()
+    objects = QueryGroupQuerySet.as_manager()
 
     def get_absolute_url(self):
         return reverse("query-group", kwargs={"pk": self.pk})

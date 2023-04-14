@@ -8,9 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+- Display latest query groups with an N + 1 situation in the dashboard
+
 ### Changed
 
 ### Fixed
+
+- `KeyError` in the query group view when a parent query comes from another request
 
 ### Removed
 

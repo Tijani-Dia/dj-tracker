@@ -33,6 +33,7 @@
 
 - Python: `>=3.8`
 - Django: `>=3.2`
+- [django-filter](https://github.com/carltongibson/django-filter)
 
 ## Getting started
 

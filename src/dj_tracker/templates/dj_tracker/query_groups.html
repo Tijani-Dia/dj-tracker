@@ -1,0 +1,22 @@
+{% extends "dj_tracker/list.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block h1 %}{{ title }}{% endblock %}
+
+{% block objects %}
+    <ol>
+        {% for query_group in page_obj %}
+            <li>
+                <a href="{{ query_group.get_absolute_url }}" class="p-3 flex justify-between">
+                    <div>
+                        #{{ query_group.pk }} - {{ query_group.num_queries }} quer{{ query_group.num_queries|pluralize:"y,ies" }}
+                        <div class="text-muted">
+                            {{ query_group.latest_occurrence|date:"D d M Y" }} at {{ query_group.latest_occurrence|time:"H:i" }}
+                        </div>
+                    </div>
+                    <span class="rounded-pill">{{ query_group.num_trackings }}</span>
+                </a>
+            </li>
+        {% endfor %}
+    </ol>
+{% endblock %}

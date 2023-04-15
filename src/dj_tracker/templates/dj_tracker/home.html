@@ -1,18 +1,17 @@
 {% extends "dj_tracker/base.html" %}
 
 {% block title %}Trackings{% endblock %}
-
 {% block h1 %}Home{% endblock %}
 
 {% block body %}
     <section>
         <h4 class="section__title">Requests</h4>
         <div class="section__body flex">
-            <div class="w-5/12 mr-4">
+            <div class="w-1/2 mr-8">
                 <h5 class="section__subtitle">Latest</h5>
-                <ol>
+                <ol class="text-gray-900 bg-white border border-gray-200 rounded-lg w-full">
                     {% for request in latest %}
-                        <li class="py-2.5 first:pt-0">
+                        <li class="px-4 py-2 text-white border-b border-gray-200 rounded-t-lg cursor-pointer">
                             <a href="{{ request.get_absolute_url }}" class="break-words">{{ request }}</a>
                         </li>
                     {% empty %}
@@ -20,12 +19,12 @@
                     {% endfor %}
                 </ol>
             </div>
-            <div class="w-5/12 mr-4">
+            <div class="w-1/2 mr-8">
                 <h5 class="section__subtitle">Most frequent</h5>
-                <ol>
+                <ol class="text-gray-900 bg-white border border-gray-200 rounded-lg w-full">
                     {% for request in most_tracked %}
-                        <li class="py-2.5 first:pt-0 flex justify-between">
-                            <a href="{{ request.get_absolute_url }}" class="break-words">{{ request }}</a>
+                        <li class="px-4 py-2 text-white border-b border-gray-200 rounded-t-lg cursor-pointer flex justify-between">
+                            <a href="{{ request.get_absolute_url }}" class="break-words mr-8">{{ request }}</a>
                             <span class="rounded-pill">{{ request.num_trackings }}</span>
                         </li>
                     {% empty %}
@@ -33,66 +32,35 @@
                     {% endfor %}
                 </ol>
             </div>
-            <div class="w-1/6 m-auto">
-                <a href="{% url 'requests' %}"
-                   class="w-12 float-right bg-indigo-900 hover:bg-indigo-800">
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                         viewBox="0 0 24 24"
-                         class="fill-indigo-50">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                </a>
-            </div>
         </div>
+        <a href="{% url 'requests' %}"
+           class="w-auto inline-flex justify-center items-center mt-8 py-3 px-5 text-base font-medium text-center text-white rounded-lg bg-indigo-700">
+            Explore all requests
+            <svg aria-hidden="true" class="ml-2 -mr-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+            </svg>
+        </a>
     </section>
 
+    <hr class="h-px my-8 bg-gray-200 border-0 dark:bg-gray-700">
+
     <section>
-        <h4 class="section__title">Queries</h4>
-        <div class="section__body flex justify-between">
-            <div>
-                <h5 class="section__subtitle">Most frequent</h5>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Repeated</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for query in most_repeated_queries %}
-                            <tr>
-                                <td>
-                                    <a href="{{ query.get_absolute_url }}">{{ query.pk }}</a>
-                                </td>
-                                <td>{{ query.num_trackings }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <h4 class="section__title">Query groups</h4>
+        <div class="section__body flex">
+            <div class="w-1/3 mr-8">
+                <h5 class="section__subtitle">Latest N + 1</h5>
+                <ol class="text-gray-900 bg-white border border-gray-200 rounded-lg w-full mt-2">
+                    {% for n_plus_one in n_plus_ones %}
+                        <li class="px-4 py-2 text-white border-b border-gray-200 rounded-t-lg cursor-pointer flex justify-between">
+                            <a href="{{ n_plus_one.get_absolute_url }}" class="break-words mr-8">{{ n_plus_one.pk }}</a>
+                        </li>
+                    {% empty %}
+                        <li>No N + 1 detected yet.</li>
+                    {% endfor %}
+                </ol>
             </div>
-            <div>
-                <h5 class="section__subtitle">Slowest</h5>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Average duration (in ms)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for query in slowest %}
-                            <tr>
-                                <td>
-                                    <a href="{{ query.get_absolute_url }}">{{ query.pk }}</a>
-                                </td>
-                                <td>{{ query.average_duration_in_ms }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <div>
-                <h5 class="section__subtitle">Largest query groups</h5>
+            <div class="w-1/3 mr-8">
+                <h5 class="section__subtitle">Largest</h5>
                 <table>
                     <thead>
                         <tr>
@@ -112,54 +80,109 @@
                     </tbody>
                 </table>
             </div>
-            <div>
-                <h5 class="section__subtitle">N + 1</h5>
+            <div class="w-1/3 mr-8">
+                <h5 class="section__subtitle">Frequent</h5>
                 <table>
-                    <thead><tr><th>#</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Number of occurences</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        {% for n_plus_one in n_plus_ones %}
-                            <tr><td><a href="{{ n_plus_one.get_absolute_url }}">{{ n_plus_one.pk }}</a></td></tr>
+                        {% for query_group in frequent_query_groups %}
+                            <tr>
+                                <td>
+                                    <a href="{{ query_group.get_absolute_url }}">{{ query_group.pk }}</a>
+                                </td>
+                                <td>{{ query_group.num_trackings }}</td>
+                            </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
+        <a href="{% url 'query-groups' %}"
+           class="w-auto inline-flex justify-center items-center mt-8 py-3 px-5 text-base font-medium text-center text-white rounded-lg bg-indigo-700">
+            Explore all query groups
+            <svg aria-hidden="true" class="ml-2 -mr-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+            </svg>
+        </a>
     </section>
 
+    <hr class="h-px my-8 bg-gray-200 border-0 dark:bg-gray-700">
+
     <section>
-        <h4 class="section__title">Fields</h4>
-        <div class="section__body w-full">
-            <h5 class="section__subtitle">Most accessed</h5>
-            <table class="w-3/4">
-                <thead>
-                    <tr>
-                        <th>
-                            #
-                        </th>
-                        <th>
-                            Get
-                        </th>
-                        <th>
-                            Set
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for field in most_accessed_fields %}
+        <h4 class="section__title">Queries</h4>
+        <div class="section__body flex">
+            <div class="w-1/3 mr-8">
+                <h5 class="section__subtitle">Most frequent</h5>
+                <table>
+                    <thead>
                         <tr>
-                            <td>
-                                {{ field }}
-                            </td>
-                            <td>
-                                {{ field.get_count }}
-                            </td>
-                            <td>
-                                {{ field.set_count }}
-                            </td>
+                            <th>#</th>
+                            <th>Repeated</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for query in most_repeated_queries %}
+                            <tr>
+                                <td><a href="{{ query.get_absolute_url }}">{{ query.pk|truncatechars:12 }}</a></td>
+                                <td>{{ query.num_trackings }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="w-1/3 mr-8">
+                <h5 class="section__subtitle">
+                    Slowest
+                </h5>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Average duration (in ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for query in slowest %}
+                            <tr>
+                                <td><a href="{{ query.get_absolute_url }}">{{ query.pk|truncatechars:12 }}</a></td>
+                                <td>{{ query.average_duration_in_ms }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="w-1/3 mr-8">
+                <h5 class="section__subtitle">
+                    Largest
+                </h5>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Number of instances</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for query in largest %}
+                            <tr>
+                                <td><a href="{{ query.get_absolute_url }}">{{ query.pk|truncatechars:12 }}</a></td>
+                                <td>{{ query.num_instances }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
+        <a href="{% url 'queries' %}" class="w-auto inline-flex justify-center items-center mt-8 py-3 px-5 text-base font-medium text-center text-white rounded-lg bg-indigo-700">
+            Explore all queries
+            <svg aria-hidden="true" class="ml-2 -mr-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+            </svg>
+        </a>
     </section>
 {% endblock body %}

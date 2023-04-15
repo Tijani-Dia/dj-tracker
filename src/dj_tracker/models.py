@@ -49,23 +49,6 @@ class URLPath(Promisable):
         return self.path
 
 
-class Request(Promisable):
-    path = models.ForeignKey(URLPath, on_delete=models.CASCADE, related_name="requests")
-    method = models.CharField(max_length=8)
-    content_type = models.CharField(max_length=256)
-    query_string = models.CharField(max_length=1024)
-
-    def get_absolute_url(self):
-        return reverse("url-trackings", kwargs={"pk": self.pk})
-
-    def __str__(self):
-        if not self.method:
-            return "DummyRequest"
-
-        base = f"[{self.method}] {self.path}"
-        return base if not self.query_string else f"{base}?{self.query_string}"
-
-
 class SourceFile(Promisable):
     name = models.CharField(max_length=255)
 
@@ -155,8 +138,12 @@ class Query(Promisable):
         related_name="related_querysets",
     )
 
+    @property
+    def average_duration_in_ms(self):
+        return round(self.average_duration * 1e-6, 2)
+
     def get_absolute_url(self):
-        return reverse("queryset-tracking", kwargs={"pk": self.pk})
+        return reverse("query", kwargs={"pk": self.pk})
 
     def get_hints(self):
         if self.query_type != QueryType.SELECT:
@@ -182,10 +169,6 @@ class Query(Promisable):
         ):
             yield "Use .values() or .values_list()"
 
-    @property
-    def average_duration_in_ms(self):
-        return round(self.average_duration * 1e-6, 2)
-
 
 class QueryGroupQuerySet(models.QuerySet):
     def annotate_latest_occurrence(self):
@@ -207,6 +190,9 @@ class QueryGroupQuerySet(models.QuerySet):
 
     def n_plus_one(self):
         return self.annotate_n_plus_one().filter(n_plus_one=True)
+
+    def annotate_num_trackings(self):
+        return self.annotate(num_trackings=models.Count("trackings"))
 
     def annotate_num_queries(self):
         # https://stackoverflow.com/questions/52027676/using-subquery-to-annotate-a-count
@@ -235,24 +221,58 @@ class QuerySetTracking(models.Model):
     # Number of occurrences of query in query_group.
     num_occurrences = models.PositiveSmallIntegerField()
 
-    def get_absolute_url(self):
-        return self.query.get_absolute_url()
-
+    @property
     def duplicate(self):
         return self.num_occurrences > 1
 
 
+class RequestQuerySet(models.QuerySet):
+    def annotate_latest_occurrence(self):
+        return self.annotate(latest_occurrence=models.Max("trackings__started_at"))
+
+    def annotate_num_trackings(self):
+        return self.annotate(num_trackings=models.Count("trackings"))
+
+    def annotate_n_plus_one(self):
+        return self.annotate(
+            n_plus_one=models.Exists(
+                QueryGroup.objects.n_plus_one().filter(
+                    trackings__request=models.OuterRef("pk")
+                )
+            )
+        )
+
+    def n_plus_one(self):
+        return self.annotate_n_plus_one().filter(n_plus_one=True)
+
+
+class Request(Promisable):
+    path = models.ForeignKey(URLPath, on_delete=models.CASCADE, related_name="requests")
+    method = models.CharField(max_length=8)
+    content_type = models.CharField(max_length=256)
+    query_string = models.CharField(max_length=1024)
+
+    objects = RequestQuerySet.as_manager()
+
+    def get_absolute_url(self):
+        return reverse("request", kwargs={"request_id": self.pk})
+
+    def __str__(self):
+        if not self.method:
+            return "DummyRequest"
+
+        base = f"[{self.method}] {self.path}"
+        return base if not self.query_string else f"{base}?{self.query_string}"
+
+
 class Tracking(models.Model):
     started_at = models.DateTimeField()
-    request = models.ForeignKey(
-        Request, on_delete=models.CASCADE, related_name="trackings"
-    )
     query_group = models.ForeignKey(
         QueryGroup, on_delete=models.CASCADE, related_name="trackings"
+    )
+    request = models.ForeignKey(
+        Request, on_delete=models.CASCADE, related_name="trackings"
     )
 
     class Meta:
         ordering = ("-started_at",)
-
-    def get_absolute_url(self):
-        return reverse("tracking", kwargs={"pk": self.pk})

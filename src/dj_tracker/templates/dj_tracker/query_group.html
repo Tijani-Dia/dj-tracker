@@ -3,7 +3,6 @@
 {% load static %}
 
 {% block title %}Query Group #{{ object.pk }}{% endblock %}
-
 {% block h1 %}
     Query Group {{ object.pk }}
     <small class="text-muted">{{ object.num_queries }} quer{{ object.num_queries|pluralize:"y,ies" }}</small>
@@ -14,13 +13,23 @@
         <div class="shrink-0 pr-20 max-w-sm">
             <form>
                 <fieldset>
-                    <legend class="section__subtitle">Filter</legend>
+                    <legend class="section__subtitle">
+                        Filter
+                    </legend>
                     <div class="mb-3">
-                        <input type="radio" id="show-related" name="select" data-select-type="related" value="related">
+                        <input type="radio"
+                               id="show-related"
+                               name="select"
+                               data-select-type="related"
+                               value="related">
                         <label class="ml-1.5" for="show-related">Related</label>
                     </div>
                     <div>
-                        <input type="radio" id="show-duplicates" name="select" data-select-type="duplicates" value="duplicates">
+                        <input type="radio"
+                               id="show-duplicates"
+                               name="select"
+                               data-select-type="duplicates"
+                               value="duplicates">
                         <label class="ml-1.5" for="show-duplicates">Duplicates</label>
                     </div>
                 </fieldset>
@@ -34,7 +43,11 @@
                                     <span class="rounded-pill mr-1.5">{{ objs }}</span>
                                     <span>{{ sql_id }}</span>
                                 </label>
-                                <input type="radio" id="show-sql-{{ sql_id }}" name="select" data-select-type="sql" value="{{ sql_id }}">
+                                <input type="radio"
+                                       id="show-sql-{{ sql_id }}"
+                                       name="select"
+                                       data-select-type="sql"
+                                       value="{{ sql_id }}">
                             </div>
                         {% endfor %}
                     </fieldset>
@@ -45,11 +58,16 @@
                         <legend class="section__subtitle">Similar Tracebacks</legend>
                         {% for traceback_id, objs in similar_tracebacks %}
                             <div class="mb-3 flex justify-between">
-                                <label for="show-traceback-{{ traceback_id }}" class="shrink-0 flex items-center mr-5">
+                                <label for="show-traceback-{{ traceback_id }}"
+                                       class="shrink-0 flex items-center mr-5">
                                     <span class="rounded-pill mr-1.5">{{ objs }}</span>
                                     <span>{{ traceback_id }}</span>
                                 </label>
-                                <input type="radio" id="show-traceback-{{ traceback_id }}" name="select" data-select-type="traceback" value="{{ traceback_id }}">
+                                <input type="radio"
+                                       id="show-traceback-{{ traceback_id }}"
+                                       name="select"
+                                       data-select-type="traceback"
+                                       value="{{ traceback_id }}">
                             </div>
                         {% endfor %}
                     </fieldset>
@@ -65,11 +83,12 @@
                 {% endfor %}
             </ol>
         </div>
+
         <div class="grow">
             <h5 class="section__subtitle">Queries</h5>
             <div>
                 {% for query in queries %}
-                    {% include "dj_tracker/query.html" with query=query %}
+                    {% include "dj_tracker/includes/query.html" with query=query %}
                 {% endfor %}
             </div>
         </div>

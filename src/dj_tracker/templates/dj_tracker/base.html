@@ -5,32 +5,29 @@
         <meta charset="UTF-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>
-            {% block title %}
-            {% endblock title %}
-        </title>
+
+        <title>{% block title %}{% endblock title %}</title>
+
         <link rel="stylesheet" href="{% static 'dj_tracker/css/main.css' %}">
         <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
         {% block extra_js %}{% endblock extra_js %}
     </head>
 
     <body class="font-sans text-slate-900 flex flex-col min-h-screen">
-        <div class="bg-indigo-900 text-indigo-50 text-3xl p-6 pl-8 flex">
-            <a href="{% url 'trackings' %}"
-               class="text-inherit font-bold hover:no-underline">dj-tracker</a>
-            <span class="mx-2">-</span>
+        <div class="bg-gradient-to-r from-indigo-800 to-indigo-900 text-slate-50 text-3xl p-6 pl-8 flex justify-between">
             <h1 class="font-medium">
-                {% block h1 %}
-                {% endblock h1 %}
+                {% block h1 %}{% endblock h1 %}
             </h1>
+            <a href="{% url 'trackings' %}" class="text-inherit font-bold w-auto">dj-tracker</a>
         </div>
+
         <div class="mx-10 my-4 flex-grow">
-            {% block body %}
-            {% endblock body %}
+            {% block body %}{% endblock body %}
         </div>
-        <footer class="bg-indigo-900 p-8 pb-4 mt-16">
-            <a href="https://tijani-dia.github.io/dj-tracker/"
-               class="text-indigo-50 underline underline-offset-2">Docs</a>
+
+        <footer class="bg-gradient-to-r from-indigo-800 to-indigo-900 p-8 pb-4 mt-16">
+            <a href="https://tijani-dia.github.io/dj-tracker/" class="text-slate-50 underline underline-offset-2">Docs</a>
         </footer>
     </body>
 </html>

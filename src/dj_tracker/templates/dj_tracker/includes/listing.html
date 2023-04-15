@@ -1,0 +1,28 @@
+<form method="GET" class="w-1/5 mt-8 mr-8">
+    <div class="listing-form">
+        <div>
+            <label for="order_by">Order by</label>
+            <select id="order_by" name="order_by">
+                {% for option in order_by_options %}
+                    <option value="{{ option.name }}" {% if option == active_order_by %} selected{% endif %}>
+                        {{ option.label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="per_page">Per page</label>
+            <select id="per_page" name="per_page">
+                {% for option in paginate_by_options %}
+                    <option value="{{ option }}" {% if option == active_paginate_by %} selected{% endif %}>
+                        {{ option }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        {{ filter.form.as_div }}
+    </div>
+    <div class="w-full py-2 flex justify-center">
+        <button type="submit">Apply</button>
+    </div>
+</form>

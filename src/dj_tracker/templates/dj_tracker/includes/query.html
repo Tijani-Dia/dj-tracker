@@ -1,0 +1,146 @@
+{% load dj_tracker %}
+<div class="mb-12"
+     id="{{ query.pk }}"
+     data-sql-id="{{ query.sql_id }}"
+     data-traceback-id="{{ query.traceback_id }}"
+     data-depth="{{ query.depth }}"
+     data-duplicate="{{ query.duplicate }}"
+     data-related="{{ query.related|length }}">
+    <h5 class="text-xl my-2 bg-gradient-to-l from-indigo-800 to-indigo-900 text-slate-50 p-2 flex justify-between">
+        <a href="{{ query.get_absolute_url }}" class="text-slate-50">{{ query.pk }}</a>
+        {% if query.from_other_query_group %}
+            <span class="rounded-pill"
+                  title="Indicates that this query (and not the related ones) comes from another request/query group.">
+                External
+            </span>
+        {% endif %}
+    </h5>
+    <dl class="flex flex-wrap text-lg m-[12px]">
+        <dt class="w-1/3 font-medium text-slate-600 mb-2">
+            Model
+        </dt>
+        <dd class="w-2/3">
+            {{ query.model }}
+        </dd>
+        <dt class="w-1/3 font-medium text-slate-600 mb-2">
+            Num instance(s)
+        </dt>
+        <dd class="w-2/3">
+            {{ query.num_instances }}
+        </dd>
+        <dt class="w-1/3 font-medium text-slate-600 mb-2">
+            Query type
+        </dt>
+        <dd class="w-2/3">
+            {{ query.query_type }}
+        </dd>
+        <dt class="w-1/3 font-medium text-slate-600 mb-2">
+            Average duration
+        </dt>
+        <dd class="w-2/3">
+            {{ query.average_duration_in_ms }} ms
+        </dd>
+        {% if query.duplicate %}
+            <dt class="w-1/3 font-medium text-slate-600 mb-2">
+                Repeated
+            </dt>
+            <dd class="w-2/3">
+                {{ query.num_occurrences }} time(s)
+            </dd>
+        {% endif %}
+        {% if query.field %}
+            <dt class="w-1/3 font-medium text-slate-600 mb-2">
+                Field
+            </dt>
+            <dd class="w-2/3">
+                {{ query.field }}
+            </dd>
+        {% endif %}
+        {% if query.cache_hits %}
+            <dt class="w-1/3 font-medium text-slate-600 mb-2">
+                Cache hits
+            </dt>
+            <dd class="w-2/3">
+                {{ query.cache_hits }}
+            </dd>
+            <dt class="w-1/3 font-medium text-slate-600 mb-2">
+                Cache info
+            </dt>
+            <dd class="w-2/3" x-data="{ open: false }">
+                <button @click="open = !open">Show</button>
+                <dl class="flex flex-wrap my-1" x-show="open">
+                    <dt class="w-1/3 font-medium text-slate-600 mb-2 text-base">
+                        .__len__
+                    </dt>
+                    <dd class="w-2/3">
+                        {{ query.len_calls }}
+                    </dd>
+                    <dt class="w-1/3 font-medium text-slate-600 mb-2 text-base">
+                        .__bool__
+                    </dt>
+                    <dd class="w-2/3">
+                        {{ query.exists_calls }}
+                    </dd>
+                    <dt class="w-1/3 font-medium text-slate-600 mb-2 text-base">
+                        .__contains__
+                    </dt>
+                    <dd class="w-2/3">
+                        {{ query.contains_calls }}
+                    </dd>
+                </dl>
+            </dd>
+        {% endif %}
+        {% if query.iterable_class %}
+            {% if query.iterable_class == "ModelIterable" %}
+                {% if query.num_instances %}
+                    <dt class="w-1/3 font-medium text-slate-600 mb-2">
+                        Model attributes accessed
+                    </dt>
+                    <dd class="w-2/3" x-data="{ open: false }">
+                        <button @click="open = !open">Show</button>
+                        <dl class="flex flex-wrap mt-2" x-show="open">
+                            {% for attr, count in query.attributes_accessed.items %}
+                                <dt class="w-2/3 font-medium text-slate-600 mb-2 text-base">
+                                    {{ attr }}
+                                </dt>
+                                <dd class="w-1/3">
+                                    {{ count }}
+                                </dd>
+                            {% endfor %}
+                        </dl>
+                    </dd>
+                {% endif %}
+            {% else %}
+                <dt class="w-1/3 font-medium text-slate-600 mb-2">
+                    Iterable class
+                </dt>
+                <dd class="w-2/3">
+                    {{ query.iterable_class }}
+                </dd>
+            {% endif %}
+        {% endif %}
+    </dl>
+    {% if query.related %}
+        <h5 class="m-2 text-lg font-medium text-slate-600">Related</h5>
+        <div id="query-{{ query_pk }}"
+             x-data="{ current: null }"
+             class="divide-y divide-slate-300 w-full ml-2">
+            {% for field, related_queries in query.related.items %}
+                <div x-data>
+                    <div class="flex justify-between items-baseline px-1.5 bg-indigo-900 text-slate-50 border-l-8 border-l-violet-100 w-full">
+                        <h2 class="leading-none flex-grow py-4"
+                            @click="current = current === $root ? null : $root">{{ field }}</h2>
+                        {% with num_queries=related_queries|total_queries %}
+                            <small class="text-muted">{{ num_queries }} quer{{ num_queries|pluralize:"y,ies" }}</small>
+                        {% endwith %}
+                    </div>
+                    <div x-show="current === $root" class="my-4 mx-10">
+                        {% for related_query in related_queries %}
+                            {% include "dj_tracker/includes/query.html" with query=related_query %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

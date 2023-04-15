@@ -1,0 +1,12 @@
+{% extends "dj_tracker/base.html" %}
+
+{% block body %}
+    <div class="flex">
+        {% include "dj_tracker/includes/listing.html" %}
+
+        <section class="listing-objects w-4/5">
+            {% block objects %}{% endblock objects %}
+            {% include "dj_tracker/includes/pagination.html" %}
+        </section>
+    </div>
+{% endblock %}

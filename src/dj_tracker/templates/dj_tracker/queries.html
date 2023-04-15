@@ -1,0 +1,23 @@
+{% extends "dj_tracker/list.html" %}
+
+{% block title %}Queries{% endblock %}
+{% block h1 %}Queries{% endblock %}
+
+{% block objects %}
+    <ol>
+        {% for query in page_obj %}
+            <li>
+                <a href="{{ query.get_absolute_url }}" class="p-3 flex justify-between">
+                    <div>
+                        ({{ query.query_type }}) {{ query.model }}
+                        <span class="text-muted">Tracked {{ query.num_trackings }} time{{ query.num_trackings|pluralize }}</span>
+                        <div class="text-muted mt-2">{{ query.sql|truncatechars:100 }}</div>
+                    </div>
+                    <span class="rounded-pill">
+                        {{ query.num_instances }} instance{{ query.num_instances|pluralize }} in {{ query.average_duration_in_ms }}ms
+                    </span>
+                </a>
+            </li>
+        {% endfor %}
+    </ol>
+{% endblock %}

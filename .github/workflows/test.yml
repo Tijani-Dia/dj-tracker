@@ -82,6 +82,7 @@ jobs:
       - name: Test
         run: |
           coverage run manage.py test
+          coverage report -m
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1

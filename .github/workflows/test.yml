@@ -73,7 +73,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install Cython==3.0.0a11
+          python3 -m pip install Cython==3.0.0b2
           python3 -m pip install coverage
           python3 -m pip install .[test]
         env:

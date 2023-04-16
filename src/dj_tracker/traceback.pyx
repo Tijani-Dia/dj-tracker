@@ -74,6 +74,9 @@ cdef class TracebackEntry:
             )
         )
     
+    def __repr__(self):
+        return f"{self.rel_path}:{self.lineno} - {self.code}"
+    
     def __getattr__(self, name):
         if name == "hash_value":
             self.hash_value = hash((self.rel_path, self.lineno))

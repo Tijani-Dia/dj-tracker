@@ -12,9 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
-- List annotations when using `Count` - pass `distinct=True` to avoid duplicate rows
+## [0.6.0a2] - 2023-04-17
 
-### Removed
+### Fixed
+
+- List annotations when using `Count` - pass `distinct=True` to avoid duplicate rows
 
 ## [0.6.0a1] - 2023-04-17
 

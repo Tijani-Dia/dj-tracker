@@ -8,7 +8,7 @@ from itertools import chain
 from django.db import transaction
 from django.utils.timezone import now
 
-from dj_tracker.cache_utils import LazySlots, cached_attribute
+from dj_tracker.cache_utils import LazySlots, lazy_attribute
 from dj_tracker.collector import Collector
 from dj_tracker.constants import DUMMY_REQUEST, TRACKINGS_DB
 from dj_tracker.context import get_request
@@ -251,7 +251,7 @@ class DummyRequestTracker:
     def add_query(cls, query_id):
         cls.queries[query_id] += 1
 
-    @cached_attribute
+    @lazy_attribute
     def query_group_id(cls):
         started_at = now()
         pk = hash(uuid.uuid1().int)

@@ -192,7 +192,7 @@ class QueryGroupQuerySet(models.QuerySet):
         return self.annotate_n_plus_one().filter(n_plus_one=True)
 
     def annotate_num_trackings(self):
-        return self.annotate(num_trackings=models.Count("trackings"))
+        return self.annotate(num_trackings=models.Count("trackings", distinct=True))
 
     def annotate_num_queries(self):
         # https://stackoverflow.com/questions/52027676/using-subquery-to-annotate-a-count
@@ -229,7 +229,7 @@ class RequestQuerySet(models.QuerySet):
         return self.annotate(latest_occurrence=models.Max("trackings__started_at"))
 
     def annotate_num_trackings(self):
-        return self.annotate(num_trackings=models.Count("trackings"))
+        return self.annotate(num_trackings=models.Count("trackings", distinct=True))
 
     def annotate_n_plus_one(self):
         return self.annotate(

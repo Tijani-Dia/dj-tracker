@@ -85,7 +85,7 @@ class HomeView(TemplateView):
         # Requests
         context["most_tracked"] = (
             Request.objects.select_related("path")
-            .annotate(num_trackings=Count("trackings"))
+            .annotate_num_trackings()
             .order_by("-num_trackings")[:5]
         )
         context["latest"] = (
@@ -116,7 +116,7 @@ class HomeView(TemplateView):
             "-num_instances"
         )[:5]
         context["most_repeated_queries"] = (
-            Query.objects.annotate(num_trackings=Count("trackings"))
+            Query.objects.annotate(num_trackings=Count("trackings", distinct=True))
             .only("cache_key")
             .order_by("-num_trackings")[:5]
         )
@@ -289,7 +289,7 @@ class QueriesView(ListView):
     @lazy_attribute
     def base_queryset(cls):
         return (
-            Query.objects.annotate(num_trackings=Count("trackings"))
+            Query.objects.annotate(num_trackings=Count("trackings", distinct=True))
             .select_related("sql", "model")
             .only(
                 "query_type",

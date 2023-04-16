@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- List annotations when using `Count` - pass `distinct=True` to avoid duplicate rows
+
 ### Removed
 
 ## [0.6.0a1] - 2023-04-17

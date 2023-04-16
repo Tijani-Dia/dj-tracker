@@ -1,5 +1,5 @@
 [run]
 branch = True
 source = dj_tracker
-omit = */migrations/*
+omit = */migrations/*,*/dj_tracker/profile.py
 plugins = Cython.Coverage

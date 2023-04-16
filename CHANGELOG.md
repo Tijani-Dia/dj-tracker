@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Removed
 
+## [0.6.0a1] - 2023-04-17
+
+### Removed
+
 - `related_name` parameter from `QueryGroup` model to avoid migrations warnings
 
 ## [0.6.0a0] - 2023-04-16

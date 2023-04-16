@@ -29,6 +29,10 @@
 - Detect when a deferred field is loaded
 - and many more insights into your queries with minimized overhead....
 
+## Demo
+
+You can try `dj-tracker` with the [bakerydemo](https://github.com/wagtail/bakerydemo) on the [demo app](https://dj-tracker-bakerydemo.herokuapp.com/dj-tracker/).
+
 ## Requirements
 
 - Python: `>=3.8`

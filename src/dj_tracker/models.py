@@ -215,9 +215,7 @@ class QueryGroup(Promisable):
 
 class QuerySetTracking(models.Model):
     query = models.ForeignKey(Query, on_delete=models.CASCADE, related_name="trackings")
-    query_group = models.ForeignKey(
-        QueryGroup, on_delete=models.CASCADE, related_name="qs_trackings"
-    )
+    query_group = models.ForeignKey(QueryGroup, on_delete=models.CASCADE)
     # Number of occurrences of query in query_group.
     num_occurrences = models.PositiveSmallIntegerField()
 

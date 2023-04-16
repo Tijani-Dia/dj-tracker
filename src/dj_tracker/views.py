@@ -205,7 +205,7 @@ class QueryGroupView(DetailView):
         return query
 
     def get_context_data(self, **kwargs):
-        qs_trackings = self.object.qs_trackings.select_related(
+        qs_trackings = self.object.querysettracking_set.select_related(
             "query__model", "query__field__model"
         ).order_by("query__depth")
         queries = {qs_tracking.query_id: qs_tracking for qs_tracking in qs_trackings}

@@ -20,7 +20,7 @@ When you click in one of the requests shown in the dashboard, it will redirect t
 
 ## Query groups
 
-A query group, as the name suggests, is a group of queries that occur together; generaly inside a full request-response cycle.
+A query group, as the name suggests, is a group of queries that occur together; generally inside a full request-response cycle.
 
 The list of all query groups is available at `/dj-tracker/query-groups/`. It allows sorting them by date, number of queries or number of occurrences. Similar to the requests page, it also allows filtering query groups to only show those where a N+1 situation was detected.
 

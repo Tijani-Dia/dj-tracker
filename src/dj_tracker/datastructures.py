@@ -137,6 +137,9 @@ class FieldTracker(HashableMixin):
             return False
         return NotImplemented
 
+    def __repr__(self):
+        return f"get: {self.get}, set: {self.set}"
+
 
 class InstanceTracker(dict):
     __slots__ = ()
@@ -498,3 +501,6 @@ class QuerySetTracker(dict):
 
     def __hash__(self):
         return id(self)
+
+    def __repr__(self):
+        return f"<QueryTracker {self['sql']}>"

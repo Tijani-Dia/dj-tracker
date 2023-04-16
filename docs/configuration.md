@@ -31,7 +31,7 @@ A set of file or module names to ignore in tracebacks.
 
 ```python
 DJ_TRACKER = {
-    "IGNORE_MODULES": {"some_app", "lib/module"}
+    "IGNORE_MODULES": {"whitenoise/", "sentry_sdk/"}
 }
 ```
 

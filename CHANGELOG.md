@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.6.0a0] - 2023-04-16
+
+### Added
+
 - Display latest query groups with an N + 1 situation in the dashboard
 - Sorting and filtering options in listing views - `django-filter` is now a dependency
 - Custom representation of common objects
@@ -21,8 +31,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 
 - `KeyError` in the query group view when a parent query comes from another request
-
-### Removed
 
 ## [0.5.2a0] - 2023-03-08
 

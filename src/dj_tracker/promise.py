@@ -4,7 +4,7 @@ from django.apps import apps
 from django.db.models.base import ModelBase
 from django.db.models.query import BaseIterable
 
-from dj_tracker.cache_utils import LRUCache, cached_attribute
+from dj_tracker.cache_utils import LRUCache, lazy_attribute
 from dj_tracker.hash_utils import HashableCounter, HashableList, hash_string
 from dj_tracker.models import (
     InstanceFieldTracking,
@@ -81,7 +81,7 @@ class Promise:
         # Remove and return the corresponding promise from `to_resolve`.
         return cls.resolve_promise(cache_key)
 
-    @cached_attribute
+    @lazy_attribute
     def queryset(cls):
         return cls.model.objects.only("cache_key").values_list("cache_key", flat=True)
 

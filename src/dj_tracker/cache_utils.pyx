@@ -56,7 +56,7 @@ class LazySlots(type):
         return super().__new__(cls, name, bases, namespace, **kwargs)
 
 
-class cached_attribute:
+class lazy_attribute:
     """
     This is similar to `cached_property` but for classes rather than class instances.
     """

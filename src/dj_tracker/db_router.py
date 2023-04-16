@@ -1,13 +1,13 @@
 from django.apps import apps
 
-from dj_tracker.cache_utils import cached_attribute
+from dj_tracker.cache_utils import lazy_attribute
 
 
 class DjTrackerRouter:
     app_label = "dj_tracker"
     db_alias = "trackings"
 
-    @cached_attribute
+    @lazy_attribute
     def models(cls):
         return frozenset(
             apps.get_app_config(cls.app_label).get_models(include_auto_created=True)

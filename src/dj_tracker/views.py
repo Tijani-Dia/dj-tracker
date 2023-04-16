@@ -8,7 +8,7 @@ from django.views.generic.detail import DetailView
 from django_filters import BooleanFilter, FilterSet
 from django_filters.views import FilterView
 
-from dj_tracker.cache_utils import cached_attribute
+from dj_tracker.cache_utils import lazy_attribute
 from dj_tracker.models import InstanceFieldTracking, Query, QueryGroup, Request
 
 OrderByOption = namedtuple("OrderByOption", ["label", "name", "value"])
@@ -142,7 +142,7 @@ class RequestsView(ListView):
 
     filterset_class = NPlusOneFilter
 
-    @cached_attribute
+    @lazy_attribute
     def base_queryset(cls):
         return (
             Request.objects.select_related("path")
@@ -176,7 +176,7 @@ class QueryGroupsView(ListView):
             qs = qs.filter(trackings__request_id=self.request_id)
         return qs
 
-    @cached_attribute
+    @lazy_attribute
     def base_queryset(cls):
         return (
             QueryGroup.objects.annotate_num_queries()
@@ -290,7 +290,7 @@ class QueriesView(ListView):
     model = Query
     filterset_fields = ["model", "query_type"]
 
-    @cached_attribute
+    @lazy_attribute
     def base_queryset(cls):
         return (
             Query.objects.annotate(num_trackings=Count("trackings"))

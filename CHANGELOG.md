@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - Display latest query groups with an N + 1 situation in the dashboard
 - Sorting and filtering options in listing views - `django-filter` is now a dependency
 - Custom representation of common objects
+- Django 4.2 to the test matrix
 
 ### Changed
 

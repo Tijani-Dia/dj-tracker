@@ -32,11 +32,7 @@ class NPlusOneFilter(FilterSet):
     n_plus_one = BooleanFilter(method="filter_n_plus_one", label="N+1")
 
     def filter_n_plus_one(self, queryset, name, value):
-        return (
-            queryset.n_plus_one()
-            if value
-            else queryset.annotate_n_plus_one().exclude(n_plus_one=True)
-        )
+        return queryset.annotate_n_plus_one().filter(n_plus_one=value)
 
 
 class ListView(FilterView):

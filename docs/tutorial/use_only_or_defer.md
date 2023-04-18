@@ -36,13 +36,13 @@ def books_list(request):
 And run our profilers:
 
 ```shell
-Time in ms (25 calls) - Min: 94.91, Max: 137.29, Avg: 107.60
+Time in ms (10 calls) - Min: 193.54, Max: 238.62, Avg: 219.09
 
-Memory - size in KiB (25 calls) - Min: 2913.94, Max: 3239.59, Avg: 2946.71
-Memory - peak in KiB (25 calls) - Min: 4272.72, Max: 4597.70, Avg: 4305.58
+Memory - size in KiB (10 calls) - Min: 5485.70, Max: 5855.15, Avg: 5698.45
+Memory - peak in KiB (10 calls) - Min: 8448.93, Max: 8819.18, Avg: 8658.94
 ```
 
-We can notice a small speed gain of around 30ms in average. However, we're now just using around 3MB; compared the previous 17.8MB we were using, it's a huge improvement - mostly explained by the fact that we're no longer loading the large `summary` and `biography` fields.
+We can notice a small speed gain of around 30ms in average. However, we're now just using around 5.7MB; compared the previous 35MB we were using, it's a huge improvement - mostly explained by the fact that we're no longer loading the large `summary` and `biography` fields.
 
 If we go to the query view, the fields stats will now look like this:
 

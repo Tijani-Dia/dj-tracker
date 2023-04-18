@@ -74,10 +74,10 @@ create_books = BookFactory.create_batch
 
 Keep in mind how we set a large content for the `summary` and `biography` fields.
 
-In a terminal, we create 2000 books to work with:
+In a terminal, we create 4000 books to work with:
 
 ```console
-python manage.py shell -c  "from app.factories import create_books; create_books(2000)"
+python manage.py shell -c  "from app.factories import create_books; create_books(4000)"
 ```
 
 ## View - Template
@@ -131,8 +131,8 @@ urlpatterns = [
 
 We'll use the following methodology to profile the view:
 
-- Make 25 requests sequentially to the `/time/` endpoint
-- Make 25 requests sequentially to the `/memory/` endpoint
+- Make 10 requests sequentially to the `/time/` endpoint
+- Make 10 requests sequentially to the `/memory/` endpoint
 - Make 1 request to the books endpoint with `dj-tracker` running
 
 We run each of these steps in a new process to have consistent results.
@@ -140,18 +140,20 @@ We run each of these steps in a new process to have consistent results.
 Let's now run the first benchmark to see how our view performs:
 
 ```shell
-Time in ms (25 calls) - Min: 1681.04, Max: 1981.69, Avg: 1740.82
+Time in ms (10 calls) - Min: 3517.68, Max: 4557.71, Avg: 3964.97
 
-Memory - size in KiB (25 calls) - Min: 19684.88, Max: 20065.00, Avg: 19788.62
-Memory - peak in KiB (25 calls) - Min: 21044.07, Max: 21425.05, Avg: 21147.91
+Memory - size in KiB (10 calls) - Min: 38986.07, Max: 39572.61, Avg: 39151.99
+Memory - peak in KiB (10 calls) - Min: 41946.51, Max: 42529.80, Avg: 42112.31
 ```
 
-Our view takes up to 2s to render and uses around 20Mb in average (in my machine)!
+Our view takes 4s to render and uses around 40Mb in average (in my machine)!
 
 ## `dj-tracker` dashboard
 
-If we now go to the `/dj-tracker/` endpoint, we can see that we're making 4001 queries:
+Here is how the `dj-tracker` dashboard looks like at this point:
 
-![dj-tracker Dashboard](../images/tuto-1.gif)
+<div style="position: relative; padding-bottom: 56.25%; height: 0;">
+    <iframe src="https://www.loom.com/embed/c2b6f0c9990f44d88e27fe944c2931fc" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+</div>
 
 In the [following steps](./detect_and_resolve_related_queries.md), we'll take a closer look at the informations `dj-tracker` gives us to see how we can improve our view.

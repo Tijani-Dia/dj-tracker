@@ -58,13 +58,13 @@ Let's update our template to match this new structure:
 Let's now run our profilers to see how our view performs:
 
 ```console
-Time in ms (25 calls) - Min: 39.77, Max: 64.72, Avg: 44.71
+Time in ms (10 calls) - Min: 86.58, Max: 115.77, Avg: 96.92
 
-Memory - size in KiB (25 calls) - Min: 1219.71, Max: 1365.07, Avg: 1241.87
-Memory - peak in KiB (25 calls) - Min: 2578.51, Max: 2724.15, Avg: 2600.67
+Memory - size in KiB (10 calls) - Min: 2303.49, Max: 2580.66, Avg: 2431.73
+Memory - peak in KiB (10 calls) - Min: 5262.68, Max: 5544.66, Avg: 5392.42
 ```
 
-Our new version is in average 2x faster (previous average was 107.6ms) and uses 2.5x less memory as well.
+Our new version is in average 2x faster (previous average was 219ms) and uses 2.5x less memory as well.
 
 This can be explained by the fact that creating and manipulating dictionaries is cheaper than doing the same with model instances - both in speed and in memory terms.
 

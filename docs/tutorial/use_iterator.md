@@ -18,15 +18,16 @@ For the sake of this tutorial, we'll use a [custom templatetag](https://github.c
 
 ```html
 {% load iterate_tags %}
-{% iterate book in books %}
-  <h4>{{ book.title }}</h4>
-  <dl>
-    <dt>Author</dt>
-    <dd>{{ book.author__first_name }} {{ book.author__last_name }}</dd>
 
-    <dt>Category</dt>
-    <dd>{{ book.category__name }}</dd>
-  </dl>
+{% iterate book in books %}
+<h4>{{ book.title }}</h4>
+<dl>
+  <dt>Author</dt>
+  <dd>{{ book.author__first_name }} {{ book.author__last_name }}</dd>
+
+  <dt>Category</dt>
+  <dd>{{ book.category__name }}</dd>
+</dl>
 {% enditerate %}
 ```
 
@@ -52,13 +53,13 @@ def books_list(request):
 and run the benchmarks:
 
 ```console
-Time in ms (25 calls) - Min: 41.26, Max: 66.69, Avg: 46.87
+Time in ms (10 calls) - Min: 96.63, Max: 133.22, Avg: 110.21
 
-Memory - size in KiB (25 calls) - Min: 353.71, Max: 592.86, Avg: 365.82
-Memory - peak in KiB (25 calls) - Min: 1715.51, Max: 1953.51, Avg: 1727.70
+Memory - size in KiB (10 calls) - Min: 578.33, Max: 848.29, Avg: 607.47
+Memory - peak in KiB (10 calls) - Min: 3544.61, Max: 3820.03, Avg: 3575.13
 ```
 
-Our timings haven't changed much but we are now only using 0.3MB in average (the previous average was 1.2MB). That's a 4x memory improvement without trading off speed.
+Our timings haven't changed much but we are now only using 0.6MB in average (the previous average was 3.4MB). That's a 4x memory improvement without trading off too much speed.
 
 ## Summary
 

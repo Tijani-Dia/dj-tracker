@@ -40,8 +40,10 @@ pip install -r requirements.txt
 ## Populate the database
 
 ```console
-./manage.py shell -c  "from app.factories import create_books; create_books(2000)"
+./manage.py shell -c  "from app.factories import create_books; create_books(4000)"
 ```
+
+**Note**: This can take a while. Feel free to adjust the number of books to create.
 
 ## Run the server
 

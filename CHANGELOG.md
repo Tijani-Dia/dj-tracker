@@ -12,6 +12,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+### Removed
+
+## [0.6.0a3] - 2023-04-18
+
+### Fixed
+
 - Error with the query groups view when passed an invalid `request_id`
 - Ordering options in requests list view
 - `form.as_div` usage since it was added in Django 4.1

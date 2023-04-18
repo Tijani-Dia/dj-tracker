@@ -1,4 +1,6 @@
+from django import VERSION as DJANGO_VERSION
 from django import template
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -30,3 +32,16 @@ class PreserveQueryParameters(template.Node):
             (key, value.resolve(context)) for key, value in self.params.items()
         )
         return "?%s" % params.urlencode()
+
+
+if DJANGO_VERSION[0] < 4 or (DJANGO_VERSION[0] == 4 and DJANGO_VERSION[1] < 1):
+
+    @register.filter
+    def form_as_div(form):
+        return mark_safe(form.as_p().replace("<p>", "<div>").replace("</p>", "</div>"))
+
+else:
+
+    @register.filter
+    def form_as_div(form):
+        return form.as_div()

@@ -131,8 +131,8 @@ class RequestsView(ListView):
     order_by_options = OrderByOptions(
         OrderByOption("Date (latest)", "-date", "-latest_occurrence"),
         OrderByOption("Date (earliest)", "date", "latest_occurrence"),
-        OrderByOption("Occurrence (ascending)", "-occurrence", "-num_trackings"),
-        OrderByOption("Occurrence (descending)", "occurrence", "num_trackings"),
+        OrderByOption("Occurrence (ascending)", "occurrence", "num_trackings"),
+        OrderByOption("Occurrence (descending)", "-occurrence", "-num_trackings"),
         OrderByOption("Path (A -> Z)", "path", "path__path"),
         OrderByOption("Path (Z -> A)", "-path", "-path__path"),
     )

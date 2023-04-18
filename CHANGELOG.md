@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 ### Fixed
 
 - Error with the query groups view when passed an invalid `request_id`
+- Ordering options in requests list view
 
 ## [0.6.0a2] - 2023-04-17
 

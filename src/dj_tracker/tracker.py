@@ -213,6 +213,9 @@ def patch_requests():
             try:
                 return send(sender, **named)
             finally:
+                if tracker := get_request().__dict__.get("_tracker"):
+                    tracker.request_finished()
+
                 set_request(DUMMY_REQUEST)
 
         return wrapper

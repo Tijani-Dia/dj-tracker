@@ -212,7 +212,6 @@ class RequestTracker:
         self.queries = HashableCounter()
         self.num_queries = self.num_queries_saved = 0
         Collector.add_request(self)
-        weakref_finalize(request, self.request_finished)
 
     def add_query(self, query_id):
         self.queries[query_id] += 1

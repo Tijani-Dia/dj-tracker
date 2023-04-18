@@ -10,11 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Changed
 
-- Logic to mark a request as finished - now it's based on the `request_finished` signal instead of using weakref finalizers
-
 ### Fixed
 
 ### Removed
+
+## [0.6.1a0] - 2023-04-18
+
+### Changed
+
+- Logic to mark a request as finished - now it's based on the `request_finished` signal instead of using weakref finalizers
 
 ## [0.6.0a3] - 2023-04-18
 

@@ -1,3 +1,5 @@
+{% load dj_tracker %}
+
 <form method="GET" class="w-1/5 mt-8 mr-8">
     <div class="listing-form">
         <div>
@@ -20,8 +22,10 @@
                 {% endfor %}
             </select>
         </div>
-        {{ filter.form.as_div }}
+    
+        {{ filter.form|form_as_div }}
     </div>
+
     <div class="w-full py-2 flex justify-center">
         <button type="submit">Apply</button>
     </div>

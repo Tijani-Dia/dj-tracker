@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from operator import itemgetter
 
 from django.db.models import Count, Max, Prefetch
+from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView
 from django.views.generic.detail import DetailView
 from django_filters import BooleanFilter, FilterSet
@@ -164,13 +165,11 @@ class QueryGroupsView(ListView):
 
     def setup(self, request, *args, request_id=None, **kwargs):
         super().setup(request, *args, **kwargs)
-        self.request_id = request_id
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        if self.request_id:
-            qs = qs.filter(trackings__request_id=self.request_id)
-        return qs
+        self.request_obj = (
+            get_object_or_404(Request.objects.select_related("path"), pk=request_id)
+            if request_id
+            else None
+        )
 
     @lazy_attribute
     def base_queryset(cls):
@@ -180,14 +179,15 @@ class QueryGroupsView(ListView):
             .annotate_latest_occurrence()
         )
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request_obj:
+            qs = qs.filter(trackings__request=self.request_obj)
+        return qs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if self.request_id:
-            context["title"] = Request.objects.select_related("path").get(
-                pk=self.request_id
-            )
-        else:
-            context["title"] = "Query groups"
+        context["title"] = self.request_obj or "Query groups"
         return context
 
 

@@ -1,6 +1,5 @@
 from django import VERSION as DJANGO_VERSION
 from django import template
-from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -12,6 +11,7 @@ def total_queries(queries):
 
 @register.tag
 def preserve_query_parameters(parser, token):
+    # https://djangosnippets.org/snippets/2428/
     params = {}
 
     for pair in token.split_contents()[1:]:
@@ -22,7 +22,6 @@ def preserve_query_parameters(parser, token):
 
 
 class PreserveQueryParameters(template.Node):
-    # https://djangosnippets.org/snippets/2428/
     def __init__(self, params):
         self.params = params
 
@@ -35,6 +34,7 @@ class PreserveQueryParameters(template.Node):
 
 
 if DJANGO_VERSION[0] < 4 or (DJANGO_VERSION[0] == 4 and DJANGO_VERSION[1] < 1):
+    from django.utils.safestring import mark_safe
 
     @register.filter
     def form_as_div(form):

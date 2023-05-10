@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Fixed
 
+- Pickling errors with related instances, e.g `book.author`
+
 ### Removed
 
 ## [0.6.1a0] - 2023-04-18

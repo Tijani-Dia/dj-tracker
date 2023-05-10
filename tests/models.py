@@ -18,7 +18,7 @@ class Author(models.Model):
     date_of_death = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.user}"
 
 
 class Comment(models.Model):

@@ -43,6 +43,7 @@ class FromDBDescriptor:
 
     def __call__(self, db, field_names, values):
         instance = self.__func__(self.model, db, field_names, values)
+        # TODO: Consider adding the `_tracker` attribute to the instance's `_state`.
         instance._tracker = new_model_instance_tracker(field_names)
         return instance
 

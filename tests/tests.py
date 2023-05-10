@@ -1,3 +1,4 @@
+import pickle
 import random
 import unittest
 from operator import attrgetter
@@ -577,3 +578,20 @@ class TestTemplateInfo(TestCase):
         traceback, template_info = qs_tracker["traceback"]
         self.assertIn("/tests/templates/tests/books.html", template_info.filename)
         self.assertEqual(template_info.code, "{% for book in books %}")
+
+
+class TestPickleability(TestCase):
+    def test_pickleability(self):
+        BookFactory(authors=AuthorFactory.create_batch(2))
+        books = Book.objects.all()
+        book = books[0]
+
+        qs = pickle.loads(pickle.dumps(books))
+        self.assertEqual(len(qs), 1)
+        self.assertEqual(qs[0], book)
+
+        authors = book.authors.all()
+        users = [author.user for author in authors]
+        for instance in (book.category, *authors, *users):
+            with self.subTest(instance=instance):
+                self.assertEqual(pickle.loads(pickle.dumps(instance)), instance)

@@ -503,3 +503,9 @@ class QuerySetTracker(dict):
 
     def __repr__(self):
         return f"<QueryTracker {self['sql']}>"
+
+    def __getstate__(self):
+        return dict(self.items())
+
+    def __setstate__(self, state):
+        self.update(state)

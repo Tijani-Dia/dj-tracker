@@ -8,8 +8,8 @@
     <a href="https://pypi.org/project/django-trackings/">
         <img src="https://badge.fury.io/py/django-trackings.svg" alt="Package version">
     </a>
-    <a href="https://pypistats.org/packages/django-trackings">
-        <img src="https://img.shields.io/pypi/dm/django-trackings?logo=Downloads" alt="Monthly downloads"/>
+    <a href="https://pepy.tech/project/django-trackings">
+        <img src="https://static.pepy.tech/badge/django-trackings" alt="Downloads"/>
     </a>
     <a href="https://opensource.org/licenses/BSD-3-Clause">
         <img src="https://img.shields.io/badge/license-BSD-blue.svg"/>

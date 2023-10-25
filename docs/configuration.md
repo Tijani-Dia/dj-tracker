@@ -61,7 +61,7 @@ DJ_TRACKER = {
 
 ## `TRACK_ATTRIBUTES_ACCESSED`
 
-`dj-tracker` patches the `__getattribute__` method on tracked models to provide hints on using `values` or `values_list` when it detects that no model attribute or method was accessed except the fields fetched from the database. This add an overhead to avery attribute access. To disable this feature, set this setting to `False`. It's enabled by default.
+`dj-tracker` patches the `__getattribute__` method on tracked models to provide hints on using `values` or `values_list` when it detects that no model attribute or method was accessed except the fields fetched from the database. This add an overhead to every attribute access. To disable this feature, set this setting to `False`. It's enabled by default.
 
 ```python
 DJ_TRACKER = {

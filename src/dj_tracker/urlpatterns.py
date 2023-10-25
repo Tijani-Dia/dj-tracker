@@ -1,5 +1,6 @@
 from functools import update_wrapper
 
+
 def decorate_urlpatterns(urlpatterns, decorator):
     """Decorate all the views in the passed urlpatterns list with the given decorator"""
     for pattern in urlpatterns:

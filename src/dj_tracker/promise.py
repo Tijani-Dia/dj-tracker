@@ -5,6 +5,7 @@ from django.db.models.base import ModelBase
 from django.db.models.query import BaseIterable
 
 from dj_tracker.cache_utils import LRUCache, lazy_attribute
+from dj_tracker.constants import DJ_TRACKER_SETTINGS
 from dj_tracker.hash_utils import HashableCounter, HashableList, hash_string
 from dj_tracker.models import (
     InstanceFieldTracking,
@@ -12,7 +13,6 @@ from dj_tracker.models import (
     QueryType,
     StackEntry,
 )
-from dj_tracker.constants import DJ_TRACKER_SETTINGS
 
 
 class Promise:
@@ -202,7 +202,7 @@ class RequestPromise(Promise):
 
     @staticmethod
     def get_in_memory_key(
-            *, path: str, method: str, content_type: str, query_string: str
+        *, path: str, method: str, content_type: str, query_string: str
     ) -> str:
         return f"{path}{method}{content_type}{query_string}"
 
@@ -212,7 +212,7 @@ class RequestPromise(Promise):
 
     @staticmethod
     def get_cache_key(
-            *, path_id: int, method: str, content_type: str, query_string: str
+        *, path_id: int, method: str, content_type: str, query_string: str
     ) -> int:
         return hash(
             (
@@ -350,10 +350,10 @@ class InstanceTrackingPromise(Promise):
 
     @staticmethod
     def get_in_memory_key(
-            *,
-            model: ModelBase,
-            select_related_field: str,
-            field_trackings: HashableCounter,
+        *,
+        model: ModelBase,
+        select_related_field: str,
+        field_trackings: HashableCounter,
     ):
         return hash((model, select_related_field, field_trackings))
 
@@ -376,7 +376,7 @@ class InstanceTrackingPromise(Promise):
 
     @staticmethod
     def get_cache_key(
-            field_trackings: FrozenSet[Tuple[int, int]], select_related_field: str
+        field_trackings: FrozenSet[Tuple[int, int]], select_related_field: str
     ) -> int:
         return (
             hash(field_trackings)
@@ -424,22 +424,22 @@ class QueryPromise(Promise):
 
     @staticmethod
     def get_in_memory_key(
-            *,
-            sql: str,
-            model: ModelBase,
-            num_instances: int,
-            query_type: QueryType,
-            traceback: Tuple,
-            depth: Optional[int] = None,
-            cache_hits: Optional[int] = None,
-            len_calls: Optional[int] = None,
-            exists_calls: Optional[int] = None,
-            contains_calls: Optional[int] = None,
-            field: Optional[Tuple[ModelBase, str]] = None,
-            iterable_class: Optional[BaseIterable] = None,
-            instance_trackings: Optional[FrozenSet] = None,
-            related_queryset_id: Optional[int] = None,
-            attributes_accessed: Optional[HashableCounter] = None,
+        *,
+        sql: str,
+        model: ModelBase,
+        num_instances: int,
+        query_type: QueryType,
+        traceback: Tuple,
+        depth: Optional[int] = None,
+        cache_hits: Optional[int] = None,
+        len_calls: Optional[int] = None,
+        exists_calls: Optional[int] = None,
+        contains_calls: Optional[int] = None,
+        field: Optional[Tuple[ModelBase, str]] = None,
+        iterable_class: Optional[BaseIterable] = None,
+        instance_trackings: Optional[FrozenSet] = None,
+        related_queryset_id: Optional[int] = None,
+        attributes_accessed: Optional[HashableCounter] = None,
     ) -> int:
         return hash(
             (
@@ -490,22 +490,22 @@ class QueryPromise(Promise):
 
     @staticmethod
     def get_cache_key(
-            *,
-            query_type: str,
-            num_instances: int,
-            sql_id: int,
-            model_id: int,
-            traceback_id: int,
-            depth: Optional[int] = None,
-            cache_hits: Optional[int] = None,
-            field_id: Optional[int] = None,
-            len_calls: Optional[int] = None,
-            exists_calls: Optional[int] = None,
-            contains_calls: Optional[int] = None,
-            iterable_class: Optional[str] = None,
-            instance_trackings: Optional[FrozenSet] = None,
-            related_queryset_id: Optional[int] = None,
-            attributes_accessed: Optional[HashableCounter] = None,
+        *,
+        query_type: str,
+        num_instances: int,
+        sql_id: int,
+        model_id: int,
+        traceback_id: int,
+        depth: Optional[int] = None,
+        cache_hits: Optional[int] = None,
+        field_id: Optional[int] = None,
+        len_calls: Optional[int] = None,
+        exists_calls: Optional[int] = None,
+        contains_calls: Optional[int] = None,
+        iterable_class: Optional[str] = None,
+        instance_trackings: Optional[FrozenSet] = None,
+        related_queryset_id: Optional[int] = None,
+        attributes_accessed: Optional[HashableCounter] = None,
     ) -> int:
         return hash(
             (

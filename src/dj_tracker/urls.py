@@ -1,9 +1,9 @@
+from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import path, register_converter
 
 from dj_tracker import views
-from dj_tracker.urlpatterns import decorate_urlpatterns
 from dj_tracker.constants import DJ_TRACKER_SETTINGS
-from django.contrib.admin.views.decorators import staff_member_required
+from dj_tracker.urlpatterns import decorate_urlpatterns
 
 
 class CacheKeyConverter:

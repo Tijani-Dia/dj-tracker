@@ -5,7 +5,6 @@ from django.db.models.base import ModelBase
 from django.db.models.query import BaseIterable
 
 from dj_tracker.cache_utils import LRUCache, lazy_attribute
-from dj_tracker.constants import DJ_TRACKER_SETTINGS
 from dj_tracker.hash_utils import HashableCounter, HashableList, hash_string
 from dj_tracker.models import (
     InstanceFieldTracking,
@@ -105,11 +104,8 @@ class Promise:
         Model = cls.model
         obj_created = cls.obj_created
         Model.objects.bulk_create(
-            [
-                Model(cache_key=cache_key, **promise.creation_kwargs)
-                for cache_key, promise in to_resolve.items()
-            ],
-            ignore_conflicts=DJ_TRACKER_SETTINGS["IGNORE_CONFLICT"],
+            Model(cache_key=cache_key, **promise.creation_kwargs)
+            for cache_key, promise in to_resolve.items()
         )
         for cache_key in to_resolve:
             obj_created(cache_key)

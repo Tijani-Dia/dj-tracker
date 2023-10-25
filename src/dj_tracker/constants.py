@@ -34,6 +34,8 @@ def _set_dj_tracker_settings():
         "APPS_TO_EXCLUDE": (),
         "IGNORE_MODULES": (),
         "IGNORE_PATHS": (),
+        "LOGIN": False,
+        "IGNORE_CONFLICT": True,
     }
     DJ_TRACKER_SETTINGS.update(getattr(settings, "DJ_TRACKER", {}))
 

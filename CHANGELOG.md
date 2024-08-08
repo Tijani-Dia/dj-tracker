@@ -14,6 +14,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Removed
 
+## [0.7.0a0] - 2024-08-08
+
+### Added
+
+- Support for Python 3.12
+- Support for Django 5.0 and 5.1
+
+### Changed
+
+- Updated Cython to 3.0.11
+- Updated cibuildwheel to 2.20.0
+
 ## [0.6.2a0] - 2023-05-10
 
 ### Fixed

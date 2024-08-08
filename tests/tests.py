@@ -142,8 +142,8 @@ class TestReverseManyToOneTracker(TestCase):
 
         category = Category.objects.get(pk=category.pk)
         self.assertEqual(category.books.count(), 2)
-        self.assertQuerysetEqual(
-            Book.objects.filter(category=category), category.books.all(), ordered=False
+        self.assertEqual(
+            list(Book.objects.filter(category=category)), list(category.books.all())
         )
 
         tracker = get_instance_tracker(category)
@@ -236,10 +236,8 @@ class TestReverseGenericManyToOneTracker(TestCase):
         book = Book.objects.last()
 
         self.assertEqual(book.comments.count(), 2)
-        self.assertQuerysetEqual(
-            Comment.objects.filter(object_id=book.pk),
-            book.comments.all(),
-            ordered=False,
+        self.assertEqual(
+            list(Comment.objects.filter(object_id=book.pk)), list(book.comments.all())
         )
 
         tracker = get_instance_tracker(book)

@@ -14,6 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 
 ### Removed
 
+## [0.7.0a1] - 2024-08-08
+
+### Changed
+
+- Updated pythoncapi_compat.h
+
 ## [0.7.0a0] - 2024-08-08
 
 ### Added

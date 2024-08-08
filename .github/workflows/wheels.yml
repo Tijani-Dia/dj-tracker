@@ -39,7 +39,7 @@ jobs:
 
       - name: Compile Cython files
         run: |
-          pipx run --spec Cython==3.0.0b2 cython src/dj_tracker/*.pyx --fast-fail -Werror -3
+          pipx run --spec Cython==3.0.11 cython src/dj_tracker/*.pyx --fast-fail -Werror -3
 
       - name: Build sdist
         run: pipx run build --sdist

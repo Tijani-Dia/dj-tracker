@@ -518,14 +518,16 @@ class QueryPromise(Promise):
                 contains_calls if contains_calls else 0,
                 instance_trackings if instance_trackings else 0,
                 hash_string(iterable_class) if iterable_class else 0,
-                hash(
-                    frozenset(
-                        (hash_string(attr), count)
-                        for attr, count in attributes_accessed.items()
+                (
+                    hash(
+                        frozenset(
+                            (hash_string(attr), count)
+                            for attr, count in attributes_accessed.items()
+                        )
                     )
-                )
-                if attributes_accessed
-                else 0,
+                    if attributes_accessed
+                    else 0
+                ),
                 related_queryset_id if related_queryset_id else 0,
             )
         )

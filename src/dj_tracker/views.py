@@ -97,12 +97,12 @@ class HomeView(TemplateView):
         )
 
         # Query groups
-        context[
-            "n_plus_ones"
-        ] = QueryGroup.objects.n_plus_one().order_by_latest_occurrence()[:6]
-        context[
-            "frequent_query_groups"
-        ] = QueryGroup.objects.annotate_num_trackings().order_by("-num_trackings")[:5]
+        context["n_plus_ones"] = (
+            QueryGroup.objects.n_plus_one().order_by_latest_occurrence()[:6]
+        )
+        context["frequent_query_groups"] = (
+            QueryGroup.objects.annotate_num_trackings().order_by("-num_trackings")[:5]
+        )
         context["largest_query_groups"] = (
             QueryGroup.objects.annotate_num_queries()
             .exclude(trackings__request__path__path="")

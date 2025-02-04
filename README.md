@@ -31,7 +31,7 @@
 
 ## Demo
 
-You can try `dj-tracker` with the [bakerydemo](https://github.com/wagtail/bakerydemo) on the [demo app](https://shorturl.at/5y6ix/).
+You can try `dj-tracker` with the [bakerydemo](https://github.com/wagtail/bakerydemo) on the [demo app](https://shorturl.at/5y6ix).
 
 ## Requirements
 

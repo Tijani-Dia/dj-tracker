@@ -17,11 +17,11 @@
 </p>
 
 > [!NOTE]
-> **👋 dj-tracker is no longer maintained.** Development continues at [Qorme](https://qorme.com).
+> **👋 dj-tracker is no longer maintained.** Development continues at [Qorme](https://qorme.com?ref=dj-tracker-readme).
 > 
 > Qorme includes all the tracking features, and goes further — it **automatically addresses common ORM issues** like N+1 queries and unused columns, so you can ship faster without worrying about performance.
 > 
-> [**Get started with Qorme →**](https://qorme.com)
+> [**Get started with Qorme →**](https://qorme.com?ref=dj-tracker-readme)
 
 `dj-tracker` is an app that tracks your queries to help detecting some possible performance optimisations listed in [Database access optimization](https://docs.djangoproject.com/en/dev/topics/db/optimization/).
 

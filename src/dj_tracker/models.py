@@ -140,6 +140,9 @@ class Query(Promisable):
 
     @property
     def average_duration_in_ms(self):
+        if self.average_duration is None:
+            return 0
+        
         return round(self.average_duration * 1e-6, 2)
 
     def get_absolute_url(self):

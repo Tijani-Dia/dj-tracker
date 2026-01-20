@@ -1,6 +1,9 @@
+from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import path, register_converter
 
 from dj_tracker import views
+from dj_tracker.constants import DJ_TRACKER_SETTINGS
+from dj_tracker.urlpatterns import decorate_urlpatterns
 
 
 class CacheKeyConverter:
@@ -36,3 +39,5 @@ urlpatterns = [
         name="query-group",
     ),
 ]
+if DJ_TRACKER_SETTINGS["LOGIN"]:
+    url_patterns = decorate_urlpatterns(urlpatterns, staff_member_required)
